@@ -1,19 +1,19 @@
-//histogram of something
+import java.util.Arrays;
+import java.util.Collections;
 
 
 // Load an image from the data directory
 // Load a different image by modifying the comments
 PImage img; 
-int[] hist;
+int[] hist, topVals;
 void setup(){
   img = loadImage("test image 0.png");
   size(1734, 867);
-  img.filter(GRAY);
+  //img.filter(GRAY);
   hist = new int[256];
-}
-void draw(){
-  image(img, 0, 0);
+  topVals = new int[12];
   // Calculate the histogram
+  image(img, 0, 0);
   for (int i = 0; i < img.width; i++) {
     for (int j = 0; j < img.height; j++) {
       int bright = int(brightness(get(i, j)));
@@ -33,4 +33,11 @@ void draw(){
     int y = int(map(hist[which], 0, histMax, img.height, 0));
     line(i, img.height, i, y);
   }
+  Arrays.sort(hist);
+  for(int i = 0; i < topVals.length; i++){
+    topVals[i] = hist[(hist.length - 1)-i];
+    System.out.println(topVals[i]);
+  }
+}
+void draw(){
 }

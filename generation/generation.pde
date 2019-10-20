@@ -1,5 +1,6 @@
 import processing.sound.*;
 import beads.*;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -12,68 +13,93 @@ final color[] dominantArr = new color[QTY];
 final Map<Integer, Integer> dominantMap =
   new LinkedHashMap<Integer, Integer>(QTY, 1.0);
 Map<Integer, Integer> map, sortedMap; int len;
-/*
-Note to clour mappings will be as follows:
-A - Red 
-Bb - Gold
-B - Pink 
-C - White 
-Db - Purple 
-D - Yellow
-Eb - Beige 
-E - Blue
-F - Orange 
-F# - Black 
-G - Green
-G# - Crimson
-*/
-PImage pic;
+PImage img;
 AudioContext ac;
-
+float[] freqs;
+int pitch;
+int[] hist, topVals;
+SoundFile[] chords;
 void setup(){
   //TODO
   //size(460,461);
   //oof = loadImage("th.jpg");
+  chords = new SoundFile[7];
+  for(int i = 0; i < 7; i++){
+    chords[i] = new SoundFile(this, "chord " + i + ".wav");
+  }
   ac = new AudioContext();
   size(1734, 867);
   noLoop();
-  pic = loadImage("test image 0.png");
-  //pic = createImage(width, height, ARGB);
-  len = pic.pixels.length;
+  img = loadImage("test image 0.png");
+  hist = new int[256];
+  topVals = new int[12];
+  freqs = new float[12];
+  // Calculate the histogram
+  image(img, 0, 0);
+  for (int i = 0; i < img.width; i++) {
+    for (int j = 0; j < img.height; j++) {
+      int bright = int(brightness(get(i, j)));
+      hist[bright]++; 
+    }
+  }
+  // Find the largest value in the histogram
+  int histMax = max(hist);
   
+  stroke(255);
+  // Draw half of the histogram (skip every second value)
+  for (int i = 0; i < img.width; i += 2) {
+    // Map i (from 0..img.width) to a location in the histogram (0..255)
+    int which = int(map(i, 0, img.width, 0, 255));
+    // Convert the histogram value to a location between 
+    // the bottom and the top of the picture
+    int y = int(map(hist[which], 0, histMax, img.height, 0));
+    line(i, img.height, i, y);
+  }
+  Arrays.sort(hist);
+  for(int i = 0; i < topVals.length; i++){
+    topVals[i] = hist[(hist.length - 1)-i];
+    System.out.println(topVals[i]);
+  }
+  //pic = createImage(width, height, ARGB);
+  
+  //populate freqs  
+  //for(int i = 0; i < topVals.length; i++){
+  //  int prePitchR = (int) red(topVals[i]);
+  //  int prePitchG = (int) green(topVals[i]);
+  //  int prePitchB = (int) blue(topVals[i]);
+  //  float ratio = (prePitchR+prePitchG+prePitchB)/765;
+  //  pitch = Pitch.forceToScale((int)(ratio*12), Pitch.dorian);
+  //  freqs[i] = Pitch.mtof(pitch + (int)random(5) * 12 + 32);
+  //}
   Gain masterGain = new Gain(ac,1,1);
   Clock clock = new Clock(ac, 700); //triggers events this time
   clock.addMessageListener(
     new Bead() {
-      int pitch, prePitchR, prePitchG, prePitchB, prep;
       public void messageReceived(Bead message) {
          Clock c = (Clock) message;
          if(c.isBeat()) {
-          //choose some nice frequencies 
-          if(random(1) < 0.5) return;
-          //for (int i = 0; i < dominantArr.length; i++){
-            prePitchR = (int) red(dominantArr[4]);
-            prePitchG = (int) green(dominantArr[4]);
-            prePitchB = (int) blue(dominantArr[4]);
-            prep = (prePitchR+prePitchG+prePitchB)/765;
-            pitch = Pitch.forceToScale((int)(prep*12), Pitch.dorian);
-            float freq = Pitch.mtof(pitch + (int)random(5) * 12 + 32);
-            WavePlayer wp = new WavePlayer(ac, freq, Buffer.SINE);
-            Gain g = new Gain(ac, 1, new Envelope(ac, 0));
-            g.addInput(wp);
-            ac.out.addInput(g);
-            ((Envelope)g.getGainEnvelope()).addSegment(0.1, random(200));
-            ((Envelope)g.getGainEnvelope()).addSegment(0, random(7000), new KillTrigger(g));
-          //}
-          
-          
+           int note1 = (int)random(12);
+           int note2 = (int)random(12);
+           float freq1 = freqs[note1];
+           float freq2 = freqs[note2];
+          WavePlayer wp1 = new WavePlayer(ac, freq1, Buffer.SINE);
+          WavePlayer wp2 = new WavePlayer(ac, freq2, Buffer.SINE);
+          Gain g = new Gain(ac, 1, new Envelope(ac, 0));
+          g.addInput(wp1);
+          g.addInput(wp2);
+          ac.out.addInput(g);
+          ((Envelope)g.getGainEnvelope()).addSegment(0.1, random(200));
+          ((Envelope)g.getGainEnvelope()).addSegment(0, random(7000), new KillTrigger(g));          
          }
          if(c.getCount() % 8 == 0) {
            //choose some nice frequencies
-          int pitchAlt = pitch;
-          if(random(1) < 0.2) pitchAlt = Pitch.forceToScale((int)random(12), Pitch.dorian) + (int)random(2) * 12;
+           int note1 = (int)random(12);
+           int note2 = (int)random(12);
+           float freq1 = freqs[note1];
+           float freq2 = freqs[note2];
+          int pitchAlt = Pitch.forceToScale((int)random(12), Pitch.dorian) + (int)random(2) * 12;
           float freq = Pitch.mtof(pitchAlt + 32);
-          WavePlayer wp = new WavePlayer(ac, freq, Buffer.SQUARE);
+          WavePlayer wp = new WavePlayer(ac, freq, Buffer.SINE);
           Gain g = new Gain(ac, 1, new Envelope(ac, 0));
           g.addInput(wp);
           Panner p = new Panner(ac, random(1));
@@ -81,7 +107,7 @@ void setup(){
           ac.out.addInput(p);
           ((Envelope)g.getGainEnvelope()).addSegment(random(0.1), random(50));
           ((Envelope)g.getGainEnvelope()).addSegment(0, random(400), new KillTrigger(p));
-       }
+         }
        if(c.getCount() % 6 == 0) {
           //Noise n = new Noise(ac);
           Gain g = new Gain(ac, 1, new Envelope(ac, 0.05));
@@ -90,7 +116,7 @@ void setup(){
           p.addInput(g);
           ac.out.addInput(p);
           ((Envelope)g.getGainEnvelope()).addSegment(0, random(100), new KillTrigger(p));
-       }
+         }
       }
     }
   );
@@ -110,28 +136,7 @@ void draw(){
   //  }
   //}
   //updatePixels();
-  background(pic);//show the image input while music plays 
-  map = countColorsIntoMap(pic.pixels);
-  sortedMap = sortMapByValues(map);
- 
-  dominantMap.clear();
-  java.util.Arrays.fill(dominantArr, 0);
- 
-  println("\nUnique colors found:", map.size(), "\tfrom:", len, ENTER);
- 
-  int idx = 0;
-  for (final Entry<Integer, Integer> colors : sortedMap.entrySet()) {
-    dominantMap.put(dominantArr[idx] = colors.getKey(), colors.getValue());
-    if (++idx == QTY)  break;
-  }
- 
-  idx = 0;
-  for (final Entry<Integer, Integer> colors : dominantMap.entrySet())
-    println(idx++, "->", hex(colors.getKey(), 6), "\tcount:", colors.getValue());
- 
-  println();
-  println(dominantMap, ENTER);
-  println(dominantArr);
+
 }
 void mousePressed() {
   redraw = true;
