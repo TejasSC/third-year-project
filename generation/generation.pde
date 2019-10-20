@@ -35,9 +35,9 @@ void setup(){
   //size(460,461);
   //oof = loadImage("th.jpg");
   ac = new AudioContext();
-  size(1587, 794);
+  size(1734, 867);
   noLoop();
-  pic = loadImage("test image 4.png");
+  pic = loadImage("test image 0.png");
   //pic = createImage(width, height, ARGB);
   len = pic.pixels.length;
   
@@ -51,18 +51,22 @@ void setup(){
          if(c.isBeat()) {
           //choose some nice frequencies 
           if(random(1) < 0.5) return;
-          prePitchR = (int) red(dominantArr[0]);
-          prePitchG = (int) green(dominantArr[0]);
-          prePitchB = (int) blue(dominantArr[0]);
-          prep = (prePitchR+prePitchG+prePitchB)/765;
-          pitch = Pitch.forceToScale((int)(prep*12), Pitch.dorian);
-          float freq = Pitch.mtof(pitch + (int)random(5) * 12 + 32);
-          WavePlayer wp = new WavePlayer(ac, freq, Buffer.SINE);
-          Gain g = new Gain(ac, 1, new Envelope(ac, 0));
-          g.addInput(wp);
-          ac.out.addInput(g);
-          ((Envelope)g.getGainEnvelope()).addSegment(0.1, random(200));
-          ((Envelope)g.getGainEnvelope()).addSegment(0, random(7000), new KillTrigger(g));
+          //for (int i = 0; i < dominantArr.length; i++){
+            prePitchR = (int) red(dominantArr[4]);
+            prePitchG = (int) green(dominantArr[4]);
+            prePitchB = (int) blue(dominantArr[4]);
+            prep = (prePitchR+prePitchG+prePitchB)/765;
+            pitch = Pitch.forceToScale((int)(prep*12), Pitch.dorian);
+            float freq = Pitch.mtof(pitch + (int)random(5) * 12 + 32);
+            WavePlayer wp = new WavePlayer(ac, freq, Buffer.SINE);
+            Gain g = new Gain(ac, 1, new Envelope(ac, 0));
+            g.addInput(wp);
+            ac.out.addInput(g);
+            ((Envelope)g.getGainEnvelope()).addSegment(0.1, random(200));
+            ((Envelope)g.getGainEnvelope()).addSegment(0, random(7000), new KillTrigger(g));
+          //}
+          
+          
          }
          if(c.getCount() % 8 == 0) {
            //choose some nice frequencies
