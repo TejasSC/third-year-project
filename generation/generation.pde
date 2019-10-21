@@ -8,23 +8,26 @@ import java.util.Map;
 import static java.util.Map.Entry;
 import java.util.LinkedHashMap;
 
-static final int QTY = 12, VARIATION = 50;
-final color[] dominantArr = new color[QTY];
-final Map<Integer, Integer> dominantMap =
-  new LinkedHashMap<Integer, Integer>(QTY, 1.0);
-Map<Integer, Integer> map, sortedMap; int len;
 PImage img;
 AudioContext ac;
 float[] freqs;
-int pitch;
+int pitch, trigger;
+int[] playSound = {0,0,0,0,0};
 int[] hist, topVals;
-SoundFile[] chords;
+SoundFile[] chords, usedChords;
+SoundFile drums;
+//musical intervals which we can transpose up by 
+//minor 2nd, major 2nd, minor 3rd, major 3rd, perfect 4th, tritone, perfect 5th
+float[] uprates = {16/15, 9/8, 6/5, 5/4, 4/3, 45/32, 3/2};
 void setup(){
   //TODO
   //size(460,461);
   //oof = loadImage("th.jpg");
-  chords = new SoundFile[7];
-  for(int i = 0; i < 7; i++){
+  drums = new SoundFile(this, "drum pattern.wav");
+  drums.loop(1,0.0,0.3,0);
+  chords = new SoundFile[12];
+  usedChords = new SoundFile[5];
+  for(int i = 0; i < chords.length; i++){
     chords[i] = new SoundFile(this, "chord " + i + ".wav");
   }
   ac = new AudioContext();
@@ -32,8 +35,7 @@ void setup(){
   noLoop();
   img = loadImage("test image 0.png");
   hist = new int[256];
-  topVals = new int[12];
-  freqs = new float[12];
+  topVals = new int[5];
   // Calculate the histogram
   image(img, 0, 0);
   for (int i = 0; i < img.width; i++) {
@@ -56,21 +58,20 @@ void setup(){
     line(i, img.height, i, y);
   }
   Arrays.sort(hist);
+  //decide which five of 12 chords we will use in the playback 
   for(int i = 0; i < topVals.length; i++){
     topVals[i] = hist[(hist.length - 1)-i];
-    System.out.println(topVals[i]);
+    //System.out.println(red(topVals[i]));
+    //System.out.println(green(topVals[i]));
+    //System.out.println(blue(topVals[i]));
+    //System.out.println();
+    int prePitchR = (int) red(topVals[i]);
+    int prePitchG = (int) green(topVals[i]);
+    int prePitchB = (int) blue(topVals[i]);
+    float ratio = (prePitchR+prePitchG+prePitchB)/765;
+    usedChords[i] = chords[(int)(ratio*(chords.length - 1))];
   }
-  //pic = createImage(width, height, ARGB);
-  
-  //populate freqs  
-  //for(int i = 0; i < topVals.length; i++){
-  //  int prePitchR = (int) red(topVals[i]);
-  //  int prePitchG = (int) green(topVals[i]);
-  //  int prePitchB = (int) blue(topVals[i]);
-  //  float ratio = (prePitchR+prePitchG+prePitchB)/765;
-  //  pitch = Pitch.forceToScale((int)(ratio*12), Pitch.dorian);
-  //  freqs[i] = Pitch.mtof(pitch + (int)random(5) * 12 + 32);
-  //}
+  /*
   Gain masterGain = new Gain(ac,1,1);
   Clock clock = new Clock(ac, 700); //triggers events this time
   clock.addMessageListener(
@@ -82,14 +83,14 @@ void setup(){
            int note2 = (int)random(12);
            float freq1 = freqs[note1];
            float freq2 = freqs[note2];
-          WavePlayer wp1 = new WavePlayer(ac, freq1, Buffer.SINE);
-          WavePlayer wp2 = new WavePlayer(ac, freq2, Buffer.SINE);
-          Gain g = new Gain(ac, 1, new Envelope(ac, 0));
-          g.addInput(wp1);
-          g.addInput(wp2);
-          ac.out.addInput(g);
-          ((Envelope)g.getGainEnvelope()).addSegment(0.1, random(200));
-          ((Envelope)g.getGainEnvelope()).addSegment(0, random(7000), new KillTrigger(g));          
+           WavePlayer wp1 = new WavePlayer(ac, freq1, Buffer.SINE);
+           WavePlayer wp2 = new WavePlayer(ac, freq2, Buffer.SINE);
+           Gain g = new Gain(ac, 1, new Envelope(ac, 0));
+           g.addInput(wp1);
+           g.addInput(wp2);
+           ac.out.addInput(g);
+           ((Envelope)g.getGainEnvelope()).addSegment(0.1, random(200));
+           ((Envelope)g.getGainEnvelope()).addSegment(0, random(7000), new KillTrigger(g));          
          }
          if(c.getCount() % 8 == 0) {
            //choose some nice frequencies
@@ -122,53 +123,32 @@ void setup(){
   );
   ac.out.addDependent(clock);
   ac.start();
+  */
 }
 
 void draw(){
-  //loadPixels();
-  //pic.loadPixels();
-  //for(int x = 0; x < width; x++){
-  //  for(int y = 0; y < height; y++){
-  //    int loc = x + y*width;
-  //    //take column of pixels
-  //    //find most common colours in that 
-  //    //map colours to that 
-  //  }
-  //}
-  //updatePixels();
-
-}
-void mousePressed() {
-  redraw = true;
-}
- 
-static final Map<Integer, Integer> countColorsIntoMap(final color... colors) {
-  final Map<Integer, Integer> map = new HashMap<Integer, Integer>();
- 
-  for (color c : colors) {
-    final Integer count = map.get(c &= ~#000000); // c |= #000000
-    map.put(c, count == null? 1 : count + 1);
-  }
- 
-  return map;
-}
- 
-static final <K extends Comparable<K>, V extends Comparable<V>>
-  Map<K, V> sortMapByValues(final Map<K, V> map)
-{
-  final int len = map.size(), capacity = ceil(len/.75) + 1;
-  final List<Entry<K, V>> entries = new ArrayList<Entry<K, V>>(map.entrySet());
- 
-  Collections.sort(entries, new Comparator<Entry<K, V>>() {
-    @ Override public int compare(final Entry<K, V> e1, final Entry<K, V> e2) {
-      final int sign = e2.getValue().compareTo(e1.getValue());
-      return sign != 0? sign : e1.getKey().compareTo(e2.getKey());
+  if (millis() > trigger) {
+    int chord = (int)random(0,4);
+     
+    // Renew the indexes of playSound so that at the next event 
+    // the order is different and randomized.
+    playSound[chord] = 1;
+    // By iterating through the playSound array we check for 
+    // 1 or 0, 1 plays a sound and draws a rect
+    for (int i = 0; i < usedChords.length; i++) {      
+      // Check which indexes are 1 and 0.
+      if (playSound[i] == 1) {
+        playSound[i] = 0;
+        // Play the soundfile from the array with the respective 
+        // rate and loop set to false
+        usedChords[i].amp(0.9);
+        usedChords[i].play(1, 1.0);
+      }
     }
-  });
- 
-  final Map<K, V> sortedMap = new LinkedHashMap<K, V>(capacity);
-  for (final Entry<K, V> entry : entries)
-    sortedMap.put(entry.getKey(), entry.getValue());
- 
-  return sortedMap;
+
+    // Create a new triggertime in the future, with a random offset 
+    // between 200 and 1000 milliseconds
+    trigger = millis() + 1900;
+    
+  }
 }
