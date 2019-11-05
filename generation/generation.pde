@@ -10,145 +10,139 @@ import java.util.LinkedHashMap;
 
 PImage img;
 AudioContext ac;
-float[] freqs;
-int pitch, trigger;
-int[] playSound = {0,0,0,0,0};
-int[] hist, topVals;
+// Times and levels for the ASR envelope
+float attackTime = 0.001;
+float sustainTime = 0.002;
+float sustainLevel = 0.4;
+float releaseTime = 0.2;
+//int[] hist, topVals, localMaxima;
 SoundFile[] chords, usedChords;
 SoundFile drums;
-//musical intervals which we can transpose up by 
-//minor 2nd, major 2nd, minor 3rd, major 3rd, perfect 4th, tritone, perfect 5th
-float[] uprates = {16/15, 9/8, 6/5, 5/4, 4/3, 45/32, 3/2};
+// Oscillator and envelope 
+TriOsc triOsc;
+Env env; 
+
+// Set the duration between the notes
+//int duration = 400;
+// Set the note trigger
+int trigger = 0; 
+float[] freqs, amps;
+int[] rhythms;
+int note = 0;//index counts the notes 
 void setup(){
+  triOsc = new TriOsc(this);
+  env  = new Env(this);
   //TODO
   //size(460,461);
   //oof = loadImage("th.jpg");
+  chords = new SoundFile[12]; usedChords = new SoundFile[5];
   drums = new SoundFile(this, "drum pattern.wav");
-  drums.loop(1,0.0,0.3,0);
-  chords = new SoundFile[12];
-  usedChords = new SoundFile[5];
-  for(int i = 0; i < chords.length; i++){
-    chords[i] = new SoundFile(this, "chord " + i + ".wav");
-  }
-  ac = new AudioContext();
-  size(1734, 867);
-  noLoop();
-  img = loadImage("test image 0.png");
-  hist = new int[256];
-  topVals = new int[5];
-  // Calculate the histogram
-  image(img, 0, 0);
-  for (int i = 0; i < img.width; i++) {
-    for (int j = 0; j < img.height; j++) {
-      int bright = int(brightness(get(i, j)));
-      hist[bright]++; 
-    }
-  }
-  // Find the largest value in the histogram
-  int histMax = max(hist);
-  
-  stroke(255);
-  // Draw half of the histogram (skip every second value)
-  for (int i = 0; i < img.width; i += 2) {
-    // Map i (from 0..img.width) to a location in the histogram (0..255)
-    int which = int(map(i, 0, img.width, 0, 255));
-    // Convert the histogram value to a location between 
-    // the bottom and the top of the picture
-    int y = int(map(hist[which], 0, histMax, img.height, 0));
-    line(i, img.height, i, y);
-  }
-  Arrays.sort(hist);
-  //decide which five of 12 chords we will use in the playback 
-  for(int i = 0; i < topVals.length; i++){
-    topVals[i] = hist[(hist.length - 1)-i];
-    //System.out.println(red(topVals[i]));
-    //System.out.println(green(topVals[i]));
-    //System.out.println(blue(topVals[i]));
-    //System.out.println();
-    int prePitchR = (int) red(topVals[i]);
-    int prePitchG = (int) green(topVals[i]);
-    int prePitchB = (int) blue(topVals[i]);
-    float ratio = (prePitchR+prePitchG+prePitchB)/765;
-    usedChords[i] = chords[(int)(ratio*(chords.length - 1))];
-  }
-  /*
-  Gain masterGain = new Gain(ac,1,1);
-  Clock clock = new Clock(ac, 700); //triggers events this time
-  clock.addMessageListener(
-    new Bead() {
-      public void messageReceived(Bead message) {
-         Clock c = (Clock) message;
-         if(c.isBeat()) {
-           int note1 = (int)random(12);
-           int note2 = (int)random(12);
-           float freq1 = freqs[note1];
-           float freq2 = freqs[note2];
-           WavePlayer wp1 = new WavePlayer(ac, freq1, Buffer.SINE);
-           WavePlayer wp2 = new WavePlayer(ac, freq2, Buffer.SINE);
-           Gain g = new Gain(ac, 1, new Envelope(ac, 0));
-           g.addInput(wp1);
-           g.addInput(wp2);
-           ac.out.addInput(g);
-           ((Envelope)g.getGainEnvelope()).addSegment(0.1, random(200));
-           ((Envelope)g.getGainEnvelope()).addSegment(0, random(7000), new KillTrigger(g));          
-         }
-         if(c.getCount() % 8 == 0) {
-           //choose some nice frequencies
-           int note1 = (int)random(12);
-           int note2 = (int)random(12);
-           float freq1 = freqs[note1];
-           float freq2 = freqs[note2];
-          int pitchAlt = Pitch.forceToScale((int)random(12), Pitch.dorian) + (int)random(2) * 12;
-          float freq = Pitch.mtof(pitchAlt + 32);
-          WavePlayer wp = new WavePlayer(ac, freq, Buffer.SINE);
-          Gain g = new Gain(ac, 1, new Envelope(ac, 0));
-          g.addInput(wp);
-          Panner p = new Panner(ac, random(1));
-          p.addInput(g);
-          ac.out.addInput(p);
-          ((Envelope)g.getGainEnvelope()).addSegment(random(0.1), random(50));
-          ((Envelope)g.getGainEnvelope()).addSegment(0, random(400), new KillTrigger(p));
-         }
-       if(c.getCount() % 6 == 0) {
-          //Noise n = new Noise(ac);
-          Gain g = new Gain(ac, 1, new Envelope(ac, 0.05));
-          //g.addInput(n);
-          Panner p = new Panner(ac, random(0.5, 1));
-          p.addInput(g);
-          ac.out.addInput(p);
-          ((Envelope)g.getGainEnvelope()).addSegment(0, random(100), new KillTrigger(p));
-         }
+  drums.loop(1,0.0,0.7,0);
+  //for(int i = 0; i < chords.length; i++){
+  //  chords[i] = new SoundFile(this, "Chord " + i + ".mp3");
+  //}
+  //ac = new AudioContext();
+  size(178, 76);
+  img = loadImage("car.png");
+  image(img,0,0);
+  convert2Gray(img, 2);
+  image(img,0,0);
+  //store the notes in an array
+  freqs = new float[height * width];
+  amps = new float[height * width];
+  rhythms = new int[height * width];
+  for(int y = 0; y < height; y++){
+    print(y+"\n");
+    for(int x = 0; x < width - 1; x++){
+      int loc = x+y*width;
+      float r = red(img.pixels[loc]);
+      float b = blue(img.pixels[loc]);
+      float g = green(img.pixels[loc]);
+      //float l = brightness(pixels[loc]);
+      //calculate rhythmic values = semiquaver, quaver or crotchet
+      //reds of lower values are longer notes, higher values are shorter notes
+      int rhythm;
+      if(r < 63.0){
+        rhythm = 500;
+      } else if (r >= 63.0 && r < 127.0){
+        rhythm = 250;
+      } else {
+        rhythm = 125;
       }
+      //Amplitude determined via how much green there is 
+      float loudness = map(g, 0, 255, 0.2, 0.8);
+      //Actual note determined by how much blue there is 
+      int note = int(map(b, 0, 255, 50, 80));
+      note = Pitch.forceToScale(note, Pitch.dorian);
+      float freq = midiToFreq(note);
+      freqs[loc] = freq;
+      amps[loc] = loudness;
+      rhythms[loc] = rhythm;
     }
-  );
-  ac.out.addDependent(clock);
-  ac.start();
-  */
+  }
 }
 
 void draw(){
-  if (millis() > trigger) {
-    int chord = (int)random(0,4);
-     
-    // Renew the indexes of playSound so that at the next event 
-    // the order is different and randomized.
-    playSound[chord] = 1;
-    // By iterating through the playSound array we check for 
-    // 1 or 0, 1 plays a sound and draws a rect
-    for (int i = 0; i < usedChords.length; i++) {      
-      // Check which indexes are 1 and 0.
-      if (playSound[i] == 1) {
-        playSound[i] = 0;
-        // Play the soundfile from the array with the respective 
-        // rate and loop set to false
-        usedChords[i].amp(0.9);
-        usedChords[i].play(1, 1.0);
-      }
-    }
-
-    // Create a new triggertime in the future, with a random offset 
-    // between 200 and 1000 milliseconds
-    trigger = millis() + 1900;
+  loadPixels();
+  img.loadPixels();
+  print("pixel "+note+"\n");
+  // If value of trigger is equal to the computer clock and if not all 
+  // notes have been played yet, the next note gets triggered.
+  if ((millis() > trigger) && (note<freqs.length)) {
+    // frequency in hz, with amplitude value of pixel (note) 
+    //to control the triangle oscillator with an amplitute of 0.8
+    triOsc.play(freqs[note],amps[note]);
+    // The envelope gets triggered with the oscillator as input and the times and 
+    // levels we defined earlier
+    env.play(triOsc, attackTime, sustainTime, sustainLevel, releaseTime);
     
+    trigger = millis() + rhythms[note];
+    note++;//move along to next pixel/note 
   }
+  updatePixels();
+}
+
+void convert2Gray(PImage img, int way){
+  if (way >= 4){
+    img.filter(GRAY);
+  } else {
+    float gray, r, g, b;
+    for(int x = 0; x < width - 1; x++){
+      for(int y = 0; y < height; y++){
+        int loc = x+y*width;
+        r = red(img.pixels[loc]);
+        b = blue(img.pixels[loc]);
+        g = green(img.pixels[loc]);
+        gray = getGray(r,g,b,way);
+        pixels[loc] = color(int(gray));
+      }//for 
+    }//for
+  }//if 
+}
+
+//Luminanace: physically, the luminous intensity per unit area of light 
+//-- measures light "intensity"
+//Relative luminance = how "intense" a light appears to a human 
+//Luma = relative luminance calculation, based on a gamma-compressed video signal
+float getGray(float r, float g, float b, int way){
+  if(way == 0){
+    //average
+    return (r+g+b)/3;
+  } else if (way == 1){
+    //linear luminance, as used by standard colour TV and video systems e.g. PAL, NTSC
+    return 0.299*r + 0.587*g + 0.114*b;
+  } else if (way == 2){
+    //ITU-R BT.709 standard used for HDTV systems 
+    return 0.2126*r + 0.7152*g + 0.0722*b;
+  } else if (way == 3){
+    //ITU-R BT.2100 standard for HDR television
+    return 0.2627*r + 0.678*g + 0.0593*b; 
+  } else {
+    return 0.0;
+  }//if 
+}
+
+// This function calculates the respective frequency of a MIDI note
+float midiToFreq(int note) {
+  return (pow(2, ((note-69)/12.0)))*440;
 }
