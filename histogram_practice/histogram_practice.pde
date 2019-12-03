@@ -9,7 +9,7 @@ int[] hist, topVals;
 void setup(){
   img = loadImage("test image 0.png");
   size(1734, 867);
-  //img.filter(GRAY);
+  img.filter(GRAY);
   hist = new int[256];
   topVals = new int[12];
   // Calculate the histogram

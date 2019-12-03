@@ -77,7 +77,7 @@ void draw() {
         // Play the soundfile from the array with the respective 
         // rate and loop set to false
         files[i].amp(0.9);
-        files[i].play(1, 1.0);
+        files[i].play(random(1.1,1.5), 1.0);
       }
     }
 
