@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import static java.util.Map.Entry;
 import java.util.LinkedHashMap;
 
@@ -29,11 +30,13 @@ Env env;
 //int duration = 400;
 // Set the note trigger
 int trigger = 0; 
+int chordCtr;
 float[] freqs, amps;
 int[] rhythms, topVals;
 int note = 0;//index counts the notes 
 int chord = 0;
 boolean sharps;
+Random rand = new Random();
 void setup(){
   colorMode(HSB, 360, 100, 100);//selecting a HSB color model 
   triOsc = new TriOsc(this);
@@ -41,26 +44,38 @@ void setup(){
   sharpChords = new SoundFile[14];
   flatChords = new SoundFile[14];
   usedChords = new SoundFile[14];
-  //drums = new SoundFile(this, "drum pattern.wav");
-  //drums.loop(1,0.0,0.7,0);
   for(int i = 0; i < usedChords.length; i++){
     sharpChords[i] = new SoundFile(this, "sharp Chord " + i + ".wav");
     flatChords[i] = new SoundFile(this, "flat Chord " + i + ".wav");
-  }
-  size(460, 461);
+  }//for 
+  
+  //MAKE SURE THE HEIGHT IS 20 PX MORE THAN THE ACTUAL HEIGHT SO THAT THE COLOUR BAR CAN FIT ONTO THE SCREEN 
+  size(571, 473);
+  
   //hash table of histPart(key) : thatValue(value) pairs  
-  img = loadImage("th.jpg");
+  img = loadImage("test1.png");
   //convert2Gray(img, 7);
   image(img,0,0);
-  PImage histImage = loadImage("test image 0.png");
-  //int[] hist = makeHist(histImage,0);//H
-  int[] hist = makeHist(histImage,1);//S
-  //int[] hist = makeHist(histImage,2);//B
-  topChords = new int[4];
-  //for(int i = 0; i < hist.length; i++){
-  //  System.out.println("There are "+hist[i]+" pixels with brightness value "+i);
-  //}
-  PImage imgsharps = loadImage("test image 4.png");
+  PImage histImage = loadImage("test1.png");
+  //int[] hueHist = makeHist(histImage,0);//H
+  int[] satHist = makeHist(histImage,1);//S
+  int[] brightHist = makeHist(histImage,2);//B
+  
+  //Chord generation 
+  int hmiBright = maxIndex(brightHist);
+  int hmiSat = maxIndex(satHist);
+  if(hmiSat < 33){
+    drums = new SoundFile(this, "slow drum pattern.wav");
+  } else if (hmiSat >= 33 && hmiSat < 67){
+    drums = new SoundFile(this, "medium drum pattern.wav");
+  } else {
+    drums = new SoundFile(this, "fast drum pattern.wav");
+  }//if 
+  drums.loop(1,0.0,0.7,0);
+  for(int i = 0; i < brightHist.length; i++){
+    System.out.println("There are "+brightHist[i]+" pixels with brightness value "+i);
+  }
+  PImage imgsharps = loadImage("test1.png");
   //performs binary thresholding to decide whether 
   sharps = tonality(imgsharps, 50);
   if(sharps){
@@ -71,9 +86,27 @@ void setup(){
     for(int i = 0; i < flatChords.length; i++){
       usedChords[i] = flatChords[i];
     }//for 
+  }//if
+  chordCtr = (int)map(hmiBright,0,360,0,13);
+  if(chordCtr % 13 == 0){
+    //if key chord is c major or Eb minor, just repeat that with its relative majors and minors 
+    topChords = new int[2];
+    if(chordCtr == 0){topChords[0]=0;topChords[1]=1;}
+    else{topChords[0]=12;topChords[1]=13;}
+  } else {
+    topChords = new int[3];
+    topChords[0] = chordCtr - 1;
+    topChords[1] = chordCtr;
+    topChords[2] = chordCtr + 1;
   }//if 
+  System.out.println("length of topChords = " + topChords.length);
+  for(int j = 0; j < topChords.length; j++){
+    System.out.println("chord " + topChords[j]);
+  }//for 
   
-}
+  //dynamics control with saturation  
+  
+}//setup 
 
 void draw(){
   loadPixels();
@@ -81,26 +114,32 @@ void draw(){
   // If value of trigger is equal to the computer clock and if not all 
   // notes have been played yet, the next note gets triggered.
   if (millis() > trigger) {
-    int chord = (int)random(0,13);
-    usedChords[chord].play(1.0,1.0);
-    //// frequency in hz, with amplitude value of pixel (note) 
-    ////to control the triangle oscillator with an amplitute of 0.8
-    //triOsc.play(freqs[note],amps[note]);
-    //// The envelope gets triggered with the oscillator as input and the times and 
-    //// levels we defined earlier
-    //env.play(triOsc, attackTime, sustainTime, sustainLevel, releaseTime);
-    
-    //trigger = millis() + rhythms[note];
-    //note++;//move along to next pixel/note
+    if(chord == topChords.length){chord=0;}
+    usedChords[topChords[chord]].play(1.0,1.0);
+    chord++;
     trigger = millis()+1900;
   }
   updatePixels();
 }
 
+int maxIndex(int[] arr){
+  int max = 0; int maxInd = 0;
+  for(int i = 0; i < arr.length; i++){
+    if(arr[i] > max){max = arr[i]; maxInd = i;}
+  }//for 
+  return maxInd;
+}//maxIndex
+
 int[] makeHist(PImage img, int choice){
   int[] hist;
   if(choice == 0){
     hist = new int[360];//hue 
+    //draw the line at the bottom of the image, representing hue values from 0 to 360
+    for(int i = 0; i < width - 1; i++){
+      int c = (int) map(i, 0, width, 0, 360);
+      stroke(c,100,100);
+      rect(i, height - 20, 1, 20);
+    }//for 
   } else {
     hist = new int[101];//saturation, brightness 
   }//if
@@ -108,7 +147,7 @@ int[] makeHist(PImage img, int choice){
   
   // Calculate the histogram
   for (int x = 0; x < width - 1; x++) {
-    for (int y = 0; y < height; y++) {
+    for (int y = 0; y < height-20; y++) {
       int loc = x+y*width;
       if(choice == 2){
         //Brighness is the amount of light, ranging between 0 and 100. The alpha channel goes from 0 (not visible) to 1 (fully opaque).
@@ -126,10 +165,9 @@ int[] makeHist(PImage img, int choice){
   
   // Find the largest value in the histogram
   int histMax = max(hist);
-  int value = 255;
-  stroke(value);//hue will be represented with black lines, saturation with gray lines, brightness with white lines 
   // Draw half of the histogram (skip every second value)
   int scale;
+  tint(100, 50);
   for (int i = 0; i < width; i ++) {
     // Map i (from 0..img.width) to a location in the histogram (0..255)
     if(choice == 0){
@@ -140,8 +178,8 @@ int[] makeHist(PImage img, int choice){
     int which = int(map(i, 0, width, 0, scale));
     // Convert the histogram value to a location between 
     // the bottom and the top of the picture
-    int y = int(map(hist[which], 0, histMax, height, 0));
-    line(i, height, i, y);
+    int y = int(map(hist[which], 0, histMax, height-20, 0));
+    line(i, height-20, i, y);
   }
   return hist;
 }//makeHist 
@@ -152,7 +190,7 @@ boolean tonality(PImage img, int thresh){
   color black = color(0,0,0);
   float r,g,b,gray;
   for(int x = 0; x < width - 1; x++){
-    for(int y = 0; y < height; y++){
+    for(int y = 0; y < height-20; y++){
       int loc = y*width + x;
       r = red(pixels[loc]);
       b = blue(pixels[loc]);
@@ -164,7 +202,7 @@ boolean tonality(PImage img, int thresh){
   }
   int w = 0, bl = 0;
   for(int x = 0; x < width - 1; x++){
-    for(int y = 0; y < height; y++){
+    for(int y = 0; y < height-20; y++){
       int loc = y*width + x;
       if(pixels[loc] == white){
         w++;
@@ -185,7 +223,7 @@ void convert2Gray(PImage img, int way){
   } else {
     float gray, r, g, b;
     for(int x = 0; x < width - 1; x++){
-      for(int y = 0; y < height; y++){
+      for(int y = 0; y < height-20; y++){
         int loc = x+y*width;
         r = red(img.pixels[loc]);
         b = blue(img.pixels[loc]);
