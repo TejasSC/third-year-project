@@ -50,16 +50,18 @@ void setup(){
   }//for 
   
   //MAKE SURE THE HEIGHT IS 20 PX MORE THAN THE ACTUAL HEIGHT SO THAT THE COLOUR BAR CAN FIT ONTO THE SCREEN 
-  size(571, 473);
+  size(1734, 887);
   
   //hash table of histPart(key) : thatValue(value) pairs  
-  img = loadImage("test1.png");
+  img = loadImage("test image 0.png");
   //convert2Gray(img, 7);
   image(img,0,0);
-  PImage histImage = loadImage("test1.png");
-  //int[] hueHist = makeHist(histImage,0);//H
-  int[] satHist = makeHist(histImage,1);//S
-  int[] brightHist = makeHist(histImage,2);//B
+  PImage brightImage = loadImage("test image 0.png");
+  PImage satImage = loadImage("test image 0.png");
+  PImage hueImage = loadImage("test image 0.png");
+  int[] satHist = makeHist(satImage,1);//S
+  int[] brightHist = makeHist(brightImage,2);//B
+  int[] hueHist = makeHist(hueImage,0);//H
   
   //Chord generation 
   int hmiBright = maxIndex(brightHist);
@@ -72,10 +74,10 @@ void setup(){
     drums = new SoundFile(this, "fast drum pattern.wav");
   }//if 
   drums.loop(1,0.0,0.7,0);
-  for(int i = 0; i < brightHist.length; i++){
-    System.out.println("There are "+brightHist[i]+" pixels with brightness value "+i);
-  }
-  PImage imgsharps = loadImage("test1.png");
+  //for(int i = 0; i < brightHist.length; i++){
+  //  System.out.println("There are "+brightHist[i]+" pixels with brightness value "+i);
+  //}
+  PImage imgsharps = loadImage("test image 0.png");
   //performs binary thresholding to decide whether 
   sharps = tonality(imgsharps, 50);
   if(sharps){
@@ -87,7 +89,7 @@ void setup(){
       usedChords[i] = flatChords[i];
     }//for 
   }//if
-  chordCtr = (int)map(hmiBright,0,360,0,13);
+  chordCtr = 13 - (int)map(hmiBright,0,100,0,13);
   if(chordCtr % 13 == 0){
     //if key chord is c major or Eb minor, just repeat that with its relative majors and minors 
     topChords = new int[2];
@@ -103,23 +105,30 @@ void setup(){
   for(int j = 0; j < topChords.length; j++){
     System.out.println("chord " + topChords[j]);
   }//for 
+  System.out.println("Saturation value with highest frequency is " + hmiSat);
+  System.out.println("Brightness value with highest frequency is " + hmiBright);
   
-  //dynamics control with saturation  
   
+  //int[] topHues = topVals(hueHist, 7);//get top colours from hue histogram, try to use as melody notes 
+  //int[] melodyNotes = new int[topHues.length];
+  ////say topHues is {0,60,100,120,175,240,330}
+  //for(int i = 0; i < melodyNotes.length; i++){
+  //  melodyNotes[i] = (int) map(topHues[i], 0, 360, 45, 75);
+  //}//for 
 }//setup 
 
 void draw(){
-  loadPixels();
-  img.loadPixels();
+  //loadPixels();
+  //img.loadPixels();
   // If value of trigger is equal to the computer clock and if not all 
   // notes have been played yet, the next note gets triggered.
   if (millis() > trigger) {
     if(chord == topChords.length){chord=0;}
     usedChords[topChords[chord]].play(1.0,1.0);
     chord++;
-    trigger = millis()+1900;
+    trigger = millis()+2000;
   }
-  updatePixels();
+  //updatePixels();
 }
 
 int maxIndex(int[] arr){
@@ -131,11 +140,12 @@ int maxIndex(int[] arr){
 }//maxIndex
 
 int[] makeHist(PImage img, int choice){
+  //loadPixels();
   int[] hist;
   if(choice == 0){
     hist = new int[360];//hue 
     //draw the line at the bottom of the image, representing hue values from 0 to 360
-    for(int i = 0; i < width - 1; i++){
+    for(int i = 0; i < width; i++){
       int c = (int) map(i, 0, width, 0, 360);
       stroke(c,100,100);
       rect(i, height - 20, 1, 20);
@@ -167,8 +177,20 @@ int[] makeHist(PImage img, int choice){
   int histMax = max(hist);
   // Draw half of the histogram (skip every second value)
   int scale;
-  tint(100, 50);
+  
   for (int i = 0; i < width; i ++) {
+    int c;
+    if(choice == 0){
+      c = (int) map(i, 0, width, 0, 360);
+      stroke(c,100,100);//H
+    } else if (choice == 1) {
+      c = (int) map(i, 0, width, 0, 100);
+      stroke(360, c, 100);//S
+    } else {
+      c = (int) map(i, 0, width, 0, 100);
+      c = (int) map(c, 0, 100, 0, 360);
+      stroke(c);//B
+    }//if 
     // Map i (from 0..img.width) to a location in the histogram (0..255)
     if(choice == 0){
       scale = 359;//hue 
@@ -181,6 +203,7 @@ int[] makeHist(PImage img, int choice){
     int y = int(map(hist[which], 0, histMax, height-20, 0));
     line(i, height-20, i, y);
   }
+  //updatePixels();
   return hist;
 }//makeHist 
 
