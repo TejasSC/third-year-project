@@ -35,6 +35,7 @@ float[] freqs, amps;
 int[] rhythms, topVals;
 int note = 0;//index counts the notes 
 int chord = 0;
+float drumsRate;
 boolean sharps;
 Random rand = new Random();
 void setup(){
@@ -50,34 +51,31 @@ void setup(){
   }//for 
   
   //MAKE SURE THE HEIGHT IS 20 PX MORE THAN THE ACTUAL HEIGHT SO THAT THE COLOUR BAR CAN FIT ONTO THE SCREEN 
-  size(1734, 887);
+  size(571, 473);
   
   //hash table of histPart(key) : thatValue(value) pairs  
-  img = loadImage("test image 0.png");
+  img = loadImage("test1.png");
   //convert2Gray(img, 7);
   image(img,0,0);
-  PImage brightImage = loadImage("test image 0.png");
-  PImage satImage = loadImage("test image 0.png");
-  PImage hueImage = loadImage("test image 0.png");
+  PImage brightImage = loadImage("test1.png");
+  PImage satImage = loadImage("test1.png");
+  PImage hueImage = loadImage("test1.png");
   int[] satHist = makeHist(satImage,1);//S
   int[] brightHist = makeHist(brightImage,2);//B
   int[] hueHist = makeHist(hueImage,0);//H
-  
+  System.out.println(Arrays.toString(hueHist));
   //Chord generation 
   int hmiBright = maxIndex(brightHist);
+  //drum generation
   int hmiSat = maxIndex(satHist);
-  if(hmiSat < 33){
-    drums = new SoundFile(this, "slow drum pattern.wav");
-  } else if (hmiSat >= 33 && hmiSat < 67){
-    drums = new SoundFile(this, "medium drum pattern.wav");
-  } else {
-    drums = new SoundFile(this, "fast drum pattern.wav");
-  }//if 
-  drums.loop(1,0.0,0.7,0);
+  drumsRate = map(hmiSat, 0, 100, 0.67, 1.33);
+  System.out.println("drumsRate = " + drumsRate);
+  drums = new SoundFile(this, "medium drum pattern.wav");
+  drums.loop(drumsRate);
   //for(int i = 0; i < brightHist.length; i++){
   //  System.out.println("There are "+brightHist[i]+" pixels with brightness value "+i);
   //}
-  PImage imgsharps = loadImage("test image 0.png");
+  PImage imgsharps = loadImage("test1.png");
   //performs binary thresholding to decide whether 
   sharps = tonality(imgsharps, 50);
   if(sharps){
@@ -108,13 +106,13 @@ void setup(){
   System.out.println("Saturation value with highest frequency is " + hmiSat);
   System.out.println("Brightness value with highest frequency is " + hmiBright);
   
-  
-  //int[] topHues = topVals(hueHist, 7);//get top colours from hue histogram, try to use as melody notes 
-  //int[] melodyNotes = new int[topHues.length];
-  ////say topHues is {0,60,100,120,175,240,330}
-  //for(int i = 0; i < melodyNotes.length; i++){
-  //  melodyNotes[i] = (int) map(topHues[i], 0, 360, 45, 75);
-  //}//for 
+  int[] topHues = topVals(hueHist, 7);//get top colours from hue histogram, try to use as melody notes 
+  int[] melodyNotes = new int[topHues.length];
+  //say topHues is {0,60,100,120,175,240,330}
+  for(int i = 0; i < melodyNotes.length; i++){
+    melodyNotes[i] = (int) map(topHues[i], 0, 360, 45, 75);
+    System.out.println("melody notes[" + i + "] = " + melodyNotes[i]);
+  }//for 
 }//setup 
 
 void draw(){
@@ -126,10 +124,22 @@ void draw(){
     if(chord == topChords.length){chord=0;}
     usedChords[topChords[chord]].play(1.0,1.0);
     chord++;
-    trigger = millis()+2000;
+    trigger = (int) (millis() + (1/drumsRate)*2000);
   }
   //updatePixels();
 }
+
+int[] topVals(int[] arr, int num){
+  int[] topArr = Arrays.copyOf(arr,arr.length);
+  int[] topHues = new int[num];
+  for(int i = 0; i < num; i++){
+    int hmiHue = maxIndex(topArr);
+    topHues[i] = hmiHue;
+    topArr[hmiHue] = -1;
+  }//for 
+  System.out.println(Arrays.toString(topHues));
+  return topHues;
+}//topVals
 
 int maxIndex(int[] arr){
   int max = 0; int maxInd = 0;
@@ -168,6 +178,7 @@ int[] makeHist(PImage img, int choice){
         hist[sat]++;
       } else {
         int hue = int(hue(img.pixels[loc]));
+        System.out.println(hue);
         hist[hue]++;
       }
     }//for 
