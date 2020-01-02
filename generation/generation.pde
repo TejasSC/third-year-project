@@ -8,6 +8,9 @@ import java.util.Map;
 import java.util.Random;
 import static java.util.Map.Entry;
 import java.util.LinkedHashMap;
+import controlP5.*;
+
+ControlP5 cp5;
 
 PImage img;
 AudioContext ac;
@@ -26,57 +29,72 @@ SoundFile drums;
 TriOsc triOsc;
 Env env; 
 
-// Set the duration between the notes
-//int duration = 400;
 // Set the note trigger
-int trigger = 0; 
+int chordTrigger = 0, noteTrigger = 0; 
 int chordCtr;
 float[] freqs, amps;
-int[] rhythms, topVals;
+int[] rhythms, topVals, melodyNotes;
 int note = 0;//index counts the notes 
 int chord = 0;
 float drumsRate;
 boolean sharps;
 Random rand = new Random();
 void setup(){
-  colorMode(HSB, 360, 100, 100);//selecting a HSB color model 
+  /*
+  selecting a HSB color model
+  */
+  colorMode(HSB, 360, 100, 100); 
   triOsc = new TriOsc(this);
   env  = new Env(this);
   sharpChords = new SoundFile[14];
   flatChords = new SoundFile[14];
   usedChords = new SoundFile[14];
+  
+  /*
+  prepare circle of 5ths of chords 
+  */
   for(int i = 0; i < usedChords.length; i++){
     sharpChords[i] = new SoundFile(this, "sharp Chord " + i + ".wav");
     flatChords[i] = new SoundFile(this, "flat Chord " + i + ".wav");
   }//for 
   
   //MAKE SURE THE HEIGHT IS 20 PX MORE THAN THE ACTUAL HEIGHT SO THAT THE COLOUR BAR CAN FIT ONTO THE SCREEN 
-  size(571, 473);
+  size(492, 507);
   
-  //hash table of histPart(key) : thatValue(value) pairs  
-  img = loadImage("test1.png");
-  //convert2Gray(img, 7);
+  cp5 = new ControlP5(this);
+  cp5.addButton("select an image");
+  String str = "rainbow crop.jpg";
+  
+  //image display   
+  img = loadImage(str);
   image(img,0,0);
-  PImage brightImage = loadImage("test1.png");
-  PImage satImage = loadImage("test1.png");
-  PImage hueImage = loadImage("test1.png");
+  
+  /*
+  histogram time
+  */
+  PImage brightImage = loadImage(str);
+  PImage satImage = loadImage(str);
+  PImage hueImage = loadImage(str);
   int[] satHist = makeHist(satImage,1);//S
   int[] brightHist = makeHist(brightImage,2);//B
   int[] hueHist = makeHist(hueImage,0);//H
-  System.out.println(Arrays.toString(hueHist));
-  //Chord generation 
-  int hmiBright = maxIndex(brightHist);
-  //drum generation
+  
+  /*
+  drum generation
+  */
   int hmiSat = maxIndex(satHist);
   drumsRate = map(hmiSat, 0, 100, 0.67, 1.33);
   System.out.println("drumsRate = " + drumsRate);
   drums = new SoundFile(this, "medium drum pattern.wav");
   drums.loop(drumsRate);
-  //for(int i = 0; i < brightHist.length; i++){
-  //  System.out.println("There are "+brightHist[i]+" pixels with brightness value "+i);
-  //}
-  PImage imgsharps = loadImage("test1.png");
-  //performs binary thresholding to decide whether 
+  
+  
+  /*
+  Chord generation
+  */ 
+  int hmiBright = maxIndex(brightHist);
+  PImage imgsharps = loadImage(str);
+  //performs binary thresholding to decide whether sharps or flats 
   sharps = tonality(imgsharps, 50);
   if(sharps){
     for(int i = 0; i < sharpChords.length; i++){
@@ -102,16 +120,16 @@ void setup(){
   System.out.println("length of topChords = " + topChords.length);
   for(int j = 0; j < topChords.length; j++){
     System.out.println("chord " + topChords[j]);
-  }//for 
-  System.out.println("Saturation value with highest frequency is " + hmiSat);
-  System.out.println("Brightness value with highest frequency is " + hmiBright);
+  }//for
   
+  /*
+  melody generation
+  */ 
   int[] topHues = topVals(hueHist, 7);//get top colours from hue histogram, try to use as melody notes 
-  int[] melodyNotes = new int[topHues.length];
+  melodyNotes = new int[topHues.length];
   //say topHues is {0,60,100,120,175,240,330}
   for(int i = 0; i < melodyNotes.length; i++){
-    melodyNotes[i] = (int) map(topHues[i], 0, 360, 45, 75);
-    System.out.println("melody notes[" + i + "] = " + melodyNotes[i]);
+    melodyNotes[i] = (int) map(topHues[i], 0, 360, 55, 75);
   }//for 
 }//setup 
 
@@ -120,15 +138,29 @@ void draw(){
   //img.loadPixels();
   // If value of trigger is equal to the computer clock and if not all 
   // notes have been played yet, the next note gets triggered.
-  if (millis() > trigger) {
+  if (millis() > chordTrigger) {
     if(chord == topChords.length){chord=0;}
     usedChords[topChords[chord]].play(1.0,1.0);
     chord++;
-    trigger = (int) (millis() + (1/drumsRate)*2000);
-  }
+    chordTrigger = (int) (millis() + (1/drumsRate)*2000);
+  }//if 
+  if(millis() > noteTrigger){
+    // midiToFreq transforms the MIDI value into a frequency in Hz which we use 
+    //to control the triangle oscillator with an amplitute of 0.8
+    if (note == melodyNotes.length) {note = 0;}
+    triOsc.play(midiToFreq(melodyNotes[note]), 0.8);
+    // The envelope gets triggered with the oscillator as input and the times and 
+    // levels we defined earlier   
+    env.play(triOsc, attackTime, sustainTime, sustainLevel, releaseTime);
+    note++; 
+    noteTrigger = (int) (millis() + (1/(6*drumsRate))*2000);
+  }//if 
   //updatePixels();
-}
+}//draw 
 
+/*
+Function to get indexes of top 'num' values from array  'arr'
+*/
 int[] topVals(int[] arr, int num){
   int[] topArr = Arrays.copyOf(arr,arr.length);
   int[] topHues = new int[num];
@@ -137,10 +169,13 @@ int[] topVals(int[] arr, int num){
     topHues[i] = hmiHue;
     topArr[hmiHue] = -1;
   }//for 
-  System.out.println(Arrays.toString(topHues));
+  //System.out.println(Arrays.toString(topHues));
   return topHues;
 }//topVals
 
+/*
+Finds the index of maximum element in array 
+*/
 int maxIndex(int[] arr){
   int max = 0; int maxInd = 0;
   for(int i = 0; i < arr.length; i++){
@@ -149,6 +184,9 @@ int maxIndex(int[] arr){
   return maxInd;
 }//maxIndex
 
+/*
+Constructs histogram for hue, saturation or brightness 
+*/
 int[] makeHist(PImage img, int choice){
   //loadPixels();
   int[] hist;
@@ -178,9 +216,8 @@ int[] makeHist(PImage img, int choice){
         hist[sat]++;
       } else {
         int hue = int(hue(img.pixels[loc]));
-        System.out.println(hue);
         hist[hue]++;
-      }
+      }//if 
     }//for 
   }//for 
   
@@ -213,11 +250,14 @@ int[] makeHist(PImage img, int choice){
     // the bottom and the top of the picture
     int y = int(map(hist[which], 0, histMax, height-20, 0));
     line(i, height-20, i, y);
-  }
+  }//for 
   //updatePixels();
   return hist;
 }//makeHist 
 
+/*
+Uses binary thresholding to determine which side of the circle of 5ths chords will come from 
+*/
 boolean tonality(PImage img, int thresh){
   loadPixels();
   color white = color(0,0,100);
@@ -232,8 +272,8 @@ boolean tonality(PImage img, int thresh){
       gray = getGray(r,g,b,1);
       color c = gray < thresh ? black : white;
       pixels[loc] = c;
-    }
-  }
+    }//for 
+  }//for 
   int w = 0, bl = 0;
   for(int x = 0; x < width - 1; x++){
     for(int y = 0; y < height-20; y++){
@@ -242,15 +282,18 @@ boolean tonality(PImage img, int thresh){
         w++;
       } else {
         bl++;
-      }
-    }
-  }
+      }//if
+    }//for 
+  }//for 
   println("Black: " + bl);
   println("White: " + w);
   //updatePixels();
   return w > bl; 
-}
+}//tonality 
 
+/*
+Many ways to covert an image to grayscale 
+*/
 void convert2Gray(PImage img, int way){
   if (way >= 4){
     img.filter(GRAY);
@@ -267,12 +310,14 @@ void convert2Gray(PImage img, int way){
       }//for 
     }//for
   }//if 
-}
+}//convert2Gray 
 
-//Luminanace: physically, the luminous intensity per unit area of light 
-//-- measures light "intensity"
-//Relative luminance = how "intense" a light appears to a human 
-//Luma = relative luminance calculation, based on a gamma-compressed video signal
+/*
+Luminanace: physically, the luminous intensity per unit area of light 
+- measures light "intensity"
+Relative luminance = how "intense" a light appears to a human 
+Luma = relative luminance calculation, based on a gamma-compressed video signal
+*/
 float getGray(float r, float g, float b, int way){
   if(way == 0){
     //average
@@ -289,9 +334,11 @@ float getGray(float r, float g, float b, int way){
   } else {
     return 0.0;
   }//if 
-}
+}//getGray 
 
-// This function calculates the respective frequency of a MIDI note
+/* 
+This function calculates the respective frequency of a MIDI note
+*/
 float midiToFreq(int note) {
   return (pow(2, ((note-69)/12.0)))*440;
-}
+}//midiToFreq
