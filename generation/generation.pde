@@ -59,11 +59,11 @@ void setup(){
   }//for 
   
   //MAKE SURE THE HEIGHT IS 20 PX MORE THAN THE ACTUAL HEIGHT SO THAT THE COLOUR BAR CAN FIT ONTO THE SCREEN 
-  size(492, 507);
+  size(1734, 887);
   
   cp5 = new ControlP5(this);
   cp5.addButton("select an image");
-  String str = "rainbow crop.jpg";
+  String str = "test image 0.png";
   
   //image display   
   img = loadImage(str);
