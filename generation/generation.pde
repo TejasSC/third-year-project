@@ -23,17 +23,19 @@ float releaseTime = 0.2;
 SoundFile[] sharpChords;
 SoundFile[] flatChords; 
 SoundFile[] usedChords;
+SoundFile[] sharpmidiNotes ;
+SoundFile[] flatmidiNotes ;
+SoundFile[] usedmidiNotes ; 
 int[] topChords;
 SoundFile drums;
 // Oscillator and envelope 
 TriOsc triOsc;
 Env env; 
-
 // Set the note trigger
 int chordTrigger = 0, noteTrigger = 0; 
-int chordCtr;
+int chordCtr, pitch;
 float[] freqs, amps;
-int[] rhythms, topVals, melodyNotes;
+int[] rhythms, topVals, midiNotes, pitches;
 int note = 0;//index counts the notes 
 int chord = 0;
 float drumsRate;
@@ -58,33 +60,32 @@ void setup(){
     flatChords[i] = new SoundFile(this, "flat Chord " + i + ".wav");
   }//for 
   
-  //MAKE SURE THE HEIGHT IS 20 PX MORE THAN THE ACTUAL HEIGHT SO THAT THE COLOUR BAR CAN FIT ONTO THE SCREEN 
-  size(1734, 887);
-  
+  //MAKE SURE THE img.height IS 20 PX MORE THAN THE ACTUAL img.height SO THAT THE COLOUR BAR CAN FIT ONTO THE SCREEN 
+  size(2160, 1080);
   cp5 = new ControlP5(this);
-  cp5.addButton("select an image");
-  String str = "test image 0.png";
+  //cp5.addButton("click").setValue(0).setPosition(100,100).setSize(400,200);
+  String str = "dlb.jpg";
   
   //image display   
   img = loadImage(str);
   image(img,0,0);
   
   /*
-  histogram time
+  histograms generation 
   */
   PImage brightImage = loadImage(str);
   PImage satImage = loadImage(str);
   PImage hueImage = loadImage(str);
+  int[] hueHist = makeHist(hueImage,0);//H
   int[] satHist = makeHist(satImage,1);//S
   int[] brightHist = makeHist(brightImage,2);//B
-  int[] hueHist = makeHist(hueImage,0);//H
   
   /*
   drum generation
   */
   int hmiSat = maxIndex(satHist);
   drumsRate = map(hmiSat, 0, 100, 0.67, 1.33);
-  System.out.println("drumsRate = " + drumsRate);
+  //System.out.println("drumsRate = " + drumsRate);
   drums = new SoundFile(this, "medium drum pattern.wav");
   drums.loop(drumsRate);
   
@@ -121,17 +122,21 @@ void setup(){
   for(int j = 0; j < topChords.length; j++){
     System.out.println("chord " + topChords[j]);
   }//for
-  
   /*
   melody generation
   */ 
-  int[] topHues = topVals(hueHist, 7);//get top colours from hue histogram, try to use as melody notes 
-  melodyNotes = new int[topHues.length];
-  //say topHues is {0,60,100,120,175,240,330}
-  for(int i = 0; i < melodyNotes.length; i++){
-    melodyNotes[i] = (int) map(topHues[i], 0, 360, 55, 75);
-  }//for 
+  int[] topHues = topVals(hueHist, 7);//get top colours from hue histogram, try to use as melody notes
+  pitches = new int[topHues.length];
+  System.out.println(Arrays.toString(topHues));
+  for(int i = 0; i < topHues.length; i++){
+    pitches[i] = (int) map(topHues[i], 0, 360, 0, 6); 
+  }//for
+  midiNotes = getNotes(chordCtr, sharps);
 }//setup 
+
+void click(){
+  System.out.println("click");
+}//click 
 
 void draw(){
   //loadPixels();
@@ -140,23 +145,78 @@ void draw(){
   // notes have been played yet, the next note gets triggered.
   if (millis() > chordTrigger) {
     if(chord == topChords.length){chord=0;}
-    usedChords[topChords[chord]].play(1.0,1.0);
+    //usedChords[topChords[chord]].pan(-0.4); MUST BE IN MONO TO PAN 
+    usedChords[topChords[chord]].play(1.0,0.7);
     chord++;
     chordTrigger = (int) (millis() + (1/drumsRate)*2000);
-  }//if 
+  }//if
   if(millis() > noteTrigger){
     // midiToFreq transforms the MIDI value into a frequency in Hz which we use 
     //to control the triangle oscillator with an amplitute of 0.8
-    if (note == melodyNotes.length) {note = 0;}
-    triOsc.play(midiToFreq(melodyNotes[note]), 0.8);
+    if (note == pitches.length) {note = 0;}
+    triOsc.play(Pitch.mtof(midiNotes[pitches[note]]), 0.6);
     // The envelope gets triggered with the oscillator as input and the times and 
     // levels we defined earlier   
     env.play(triOsc, attackTime, sustainTime, sustainLevel, releaseTime);
     note++; 
-    noteTrigger = (int) (millis() + (1/(6*drumsRate))*2000);
+    noteTrigger = (int) (millis() + (1/drumsRate)*2000);
   }//if 
-  //updatePixels();
+  updatePixels();
 }//draw 
+
+/*
+Function to get note of scale based on chord centre and note from hue 
+*/
+int[] getNotes(int ctr, boolean sharps){
+  int[] scale = new int[7];
+  int x;// decides root note of the scale 
+  if(sharps){
+    switch(ctr){
+      case 0: x = 72; break;
+      case 1: x = 72; break;
+      case 2: x = 79; break;
+      case 3: x = 79; break;
+      case 4: x = 74; break;
+      case 5: x = 74; break;
+      case 6: x = 81; break;
+      case 7: x = 81; break;
+      case 8: x = 76; break;
+      case 9: x = 76; break;
+      case 10: x = 83; break;
+      case 11: x = 83; break;
+      case 12: x = 78; break;
+      case 13: x = 78; break;
+      default: x = 72;
+    }//switch 
+  } else {
+    switch(ctr){
+      case 0: x = 72; break;
+      case 1: x = 72; break;
+      case 2: x = 77; break;
+      case 3: x = 77; break;
+      case 4: x = 82; break;
+      case 5: x = 82; break;
+      case 6: x = 75; break;
+      case 7: x = 75; break;
+      case 8: x = 80; break;
+      case 9: x = 80; break;
+      case 10: x = 73; break;
+      case 11: x = 73; break;
+      case 12: x = 78; break;
+      case 13: x = 78; break;
+      default: x = 72;
+    }//switch 
+  }//if 
+  //make diatonic major scale based on what note x is 
+  for(int i = 0; i < scale.length; i++){
+    if(i < 3){
+      scale[i] = x + 2*i;
+    }else{
+      scale[i] = x + (2*i - 1);
+    }//if 
+  }//for
+  return scale;
+}//getNote
 
 /*
 Function to get indexes of top 'num' values from array  'arr'
@@ -193,10 +253,10 @@ int[] makeHist(PImage img, int choice){
   if(choice == 0){
     hist = new int[360];//hue 
     //draw the line at the bottom of the image, representing hue values from 0 to 360
-    for(int i = 0; i < width; i++){
-      int c = (int) map(i, 0, width, 0, 360);
+    for(int i = 0; i < img.width; i++){
+      int c = (int) map(i, 0, img.width, 0, 360);
       stroke(c,100,100);
-      rect(i, height - 20, 1, 20);
+      rect(i, img.height - 20, 1, 20);
     }//for 
   } else {
     hist = new int[101];//saturation, brightness 
@@ -204,9 +264,9 @@ int[] makeHist(PImage img, int choice){
   
   
   // Calculate the histogram
-  for (int x = 0; x < width - 1; x++) {
-    for (int y = 0; y < height-20; y++) {
-      int loc = x+y*width;
+  for (int x = 0; x < img.width - 1; x++) {
+    for (int y = 0; y < img.height-20; y++) {
+      int loc = x+y*img.width;
       if(choice == 2){
         //Brighness is the amount of light, ranging between 0 and 100. The alpha channel goes from 0 (not visible) to 1 (fully opaque).
         int bright = int(brightness(img.pixels[loc]));
@@ -226,30 +286,30 @@ int[] makeHist(PImage img, int choice){
   // Draw half of the histogram (skip every second value)
   int scale;
   
-  for (int i = 0; i < width; i ++) {
+  for (int i = 0; i < img.width; i ++) {
     int c;
     if(choice == 0){
-      c = (int) map(i, 0, width, 0, 360);
+      c = (int) map(i, 0, img.width, 0, 360);
       stroke(c,100,100);//H
     } else if (choice == 1) {
-      c = (int) map(i, 0, width, 0, 100);
+      c = (int) map(i, 0, img.width, 0, 100);
       stroke(360, c, 100);//S
     } else {
-      c = (int) map(i, 0, width, 0, 100);
+      c = (int) map(i, 0, img.width, 0, 100);
       c = (int) map(c, 0, 100, 0, 360);
       stroke(c);//B
     }//if 
-    // Map i (from 0..img.width) to a location in the histogram (0..255)
+    // Map i (from 0..img.img.width) to a location in the histogram (0..255)
     if(choice == 0){
       scale = 359;//hue 
     } else {
       scale = 101;//saturation, brightness 
     }//if
-    int which = int(map(i, 0, width, 0, scale));
+    int which = int(map(i, 0, img.width, 0, scale));
     // Convert the histogram value to a location between 
     // the bottom and the top of the picture
-    int y = int(map(hist[which], 0, histMax, height-20, 0));
-    line(i, height-20, i, y);
+    int y = int(map(hist[which], 0, histMax, img.height-20, 0));
+    line(i, img.height-20, i, y);
   }//for 
   //updatePixels();
   return hist;
@@ -259,26 +319,26 @@ int[] makeHist(PImage img, int choice){
 Uses binary thresholding to determine which side of the circle of 5ths chords will come from 
 */
 boolean tonality(PImage img, int thresh){
-  loadPixels();
+  //loadPixels();
   color white = color(0,0,100);
   color black = color(0,0,0);
   float r,g,b,gray;
-  for(int x = 0; x < width - 1; x++){
-    for(int y = 0; y < height-20; y++){
-      int loc = y*width + x;
-      r = red(pixels[loc]);
-      b = blue(pixels[loc]);
-      g = green(pixels[loc]);
+  for(int x = 0; x < img.width - 1; x++){
+    for(int y = 0; y < img.height-20; y++){
+      int loc = y*img.width + x;
+      r = red(img.pixels[loc]);
+      b = blue(img.pixels[loc]);
+      g = green(img.pixels[loc]);
       gray = getGray(r,g,b,1);
       color c = gray < thresh ? black : white;
-      pixels[loc] = c;
+      img.pixels[loc] = c;
     }//for 
   }//for 
   int w = 0, bl = 0;
-  for(int x = 0; x < width - 1; x++){
-    for(int y = 0; y < height-20; y++){
-      int loc = y*width + x;
-      if(pixels[loc] == white){
+  for(int x = 0; x < img.width - 1; x++){
+    for(int y = 0; y < img.height-20; y++){
+      int loc = y*img.width + x;
+      if(img.pixels[loc] == white){
         w++;
       } else {
         bl++;
@@ -299,9 +359,9 @@ void convert2Gray(PImage img, int way){
     img.filter(GRAY);
   } else {
     float gray, r, g, b;
-    for(int x = 0; x < width - 1; x++){
-      for(int y = 0; y < height-20; y++){
-        int loc = x+y*width;
+    for(int x = 0; x < img.width - 1; x++){
+      for(int y = 0; y < img.height-20; y++){
+        int loc = x+y*img.width;
         r = red(img.pixels[loc]);
         b = blue(img.pixels[loc]);
         g = green(img.pixels[loc]);
@@ -335,10 +395,3 @@ float getGray(float r, float g, float b, int way){
     return 0.0;
   }//if 
 }//getGray 
-
-/* 
-This function calculates the respective frequency of a MIDI note
-*/
-float midiToFreq(int note) {
-  return (pow(2, ((note-69)/12.0)))*440;
-}//midiToFreq

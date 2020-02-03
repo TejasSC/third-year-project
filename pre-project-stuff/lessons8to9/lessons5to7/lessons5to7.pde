@@ -52,7 +52,7 @@ void setup(){
          if(c.isBeat()) {
           //choose some nice frequencies 
           if(random(1) < 0.5) return;
-          pitch = Pitch.forceToScale((int)random(12), Pitch.dorian);
+          pitch = Pitch.forceToScale((int)random(12), Pitch.major);
           float freq = Pitch.mtof(pitch + (int)random(5) * 12 + 32);
           WavePlayer wp = new WavePlayer(ac, freq, Buffer.SINE);
           Gain g = new Gain(ac, 1, new Envelope(ac, 0));
