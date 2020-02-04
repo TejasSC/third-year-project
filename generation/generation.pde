@@ -11,11 +11,11 @@ import java.util.LinkedHashMap;
 import controlP5.*;
 
 ControlP5 cp5;
-
-PImage img;
+String imageStr, textFieldCaption = "Type the name of an image file here";
+PImage img, hueImg, satImg, brightImg;
 AudioContext ac;
 // Times and levels for the ASR envelope
-float attackTime = 0.001;
+float attackTime = 0.004;
 float sustainTime = 0.002;
 float sustainLevel = 0.4;
 float releaseTime = 0.2;
@@ -23,9 +23,6 @@ float releaseTime = 0.2;
 SoundFile[] sharpChords;
 SoundFile[] flatChords; 
 SoundFile[] usedChords;
-SoundFile[] sharpmidiNotes ;
-SoundFile[] flatmidiNotes ;
-SoundFile[] usedmidiNotes ; 
 int[] topChords;
 SoundFile drums;
 // Oscillator and envelope 
@@ -35,22 +32,27 @@ Env env;
 int chordTrigger = 0, noteTrigger = 0; 
 int chordCtr, pitch;
 float[] freqs, amps;
-int[] rhythms, topVals, midiNotes, pitches;
+int[] rhythms, topVals, midiNotes, pitches, hueHist, satHist, brightHist;
 int note = 0;//index counts the notes 
 int chord = 0;
 float drumsRate;
-boolean sharps;
+boolean sharps, hueToggle, satToggle, brightToggle, imgThere;
 Random rand = new Random();
 void setup(){
+  hueToggle = satToggle = brightToggle = imgThere = false;
   /*
   selecting a HSB color model
   */
-  colorMode(HSB, 360, 100, 100); 
+  colorMode(HSB, 360, 100, 100);
+  background(0);
   triOsc = new TriOsc(this);
   env  = new Env(this);
   sharpChords = new SoundFile[14];
   flatChords = new SoundFile[14];
   usedChords = new SoundFile[14];
+  
+  PFont pfont = createFont("Arial",20,true);
+  ControlFont font = new ControlFont(pfont,30);
   
   /*
   prepare circle of 5ths of chords 
@@ -62,23 +64,78 @@ void setup(){
   
   //MAKE SURE THE img.height IS 20 PX MORE THAN THE ACTUAL img.height SO THAT THE COLOUR BAR CAN FIT ONTO THE SCREEN 
   size(2160, 1080);
+  //fullScreen();
   cp5 = new ControlP5(this);
-  //cp5.addButton("click").setValue(0).setPosition(100,100).setSize(400,200);
-  String str = "dlb.jpg";
-  
+  cp5.addTextfield(textFieldCaption)
+    .setPosition(width - width/4,30)
+    .setSize(width/8,50)
+    .setText("Type here")
+    .setFont(font)
+    .setAutoClear(false);
+  cp5.addBang("generate")
+    .setPosition(width - width/4,130)
+    .setSize(100,50)
+    .setColorValue(0xffffff00);
+  cp5.addButton("hues")
+    .setValue(0)
+    .setPosition(width - width/4,230)
+    .setSize(100,50);
+  cp5.addButton("saturations")
+    .setValue(0)
+    .setPosition(width - width/4,330)
+    .setSize(100,50);
+  cp5.addButton("brightnesses")
+    .setValue(0)
+    .setPosition(width - width/4,430)
+    .setSize(100,50);
+  cp5.getController(textFieldCaption)
+    .getCaptionLabel()
+    .setFont(font)
+    .toUpperCase(false)
+    .setSize(20);
+  cp5.getController("generate")
+    .getCaptionLabel()
+    .setFont(font)
+    .toUpperCase(false)
+    .setSize(20);
+  //String str = "dlb.jpg";
+}//setup 
+
+void hues(){
+  if(!hueToggle){hueToggle=true;}else{hueToggle=false;}//if 
+}//hues
+
+void saturations(){
+  if(!satToggle){satToggle=true;}else{satToggle=false;}
+}//saturations
+
+void brightnesses(){
+  if(!brightToggle){brightToggle=true;}else{brightToggle=false;}
+}//brightness
+
+void generate(){
+  imageStr = cp5.get(Textfield.class,"Type the name of an image file here").getText();
+  imgThere = true;
+  crackOn(imageStr);
+}//submit
+
+void crackOn(String imageStr){
   //image display   
-  img = loadImage(str);
+  img = loadImage(imageStr);
+  hueImg = loadImage(imageStr);
+  satImg = loadImage(imageStr);
+  brightImg = loadImage(imageStr);
   image(img,0,0);
   
   /*
   histograms generation 
   */
-  PImage brightImage = loadImage(str);
-  PImage satImage = loadImage(str);
-  PImage hueImage = loadImage(str);
-  int[] hueHist = makeHist(hueImage,0);//H
-  int[] satHist = makeHist(satImage,1);//S
-  int[] brightHist = makeHist(brightImage,2);//B
+  PImage brightImage = loadImage(imageStr);
+  PImage satImage = loadImage(imageStr);
+  PImage hueImage = loadImage(imageStr);
+  hueHist = makeHist(hueImage,0);//H
+  satHist = makeHist(satImage,1);//S
+  brightHist = makeHist(brightImage,2);//B
   
   /*
   drum generation
@@ -89,12 +146,11 @@ void setup(){
   drums = new SoundFile(this, "medium drum pattern.wav");
   drums.loop(drumsRate);
   
-  
   /*
   Chord generation
   */ 
   int hmiBright = maxIndex(brightHist);
-  PImage imgsharps = loadImage(str);
+  PImage imgsharps = loadImage(imageStr);
   //performs binary thresholding to decide whether sharps or flats 
   sharps = tonality(imgsharps, 50);
   if(sharps){
@@ -106,7 +162,15 @@ void setup(){
       usedChords[i] = flatChords[i];
     }//for 
   }//if
+  /*
+  melody generation
+  */ 
+  int[] topHues = topVals(hueHist, 7);
+  System.out.println(Arrays.toString(topHues));
+  int avg = (int)average(topHues);
+  
   chordCtr = 13 - (int)map(hmiBright,0,100,0,13);
+  //chordCtr = (int)map(avg, 0, 360, 0, 13);
   if(chordCtr % 13 == 0){
     //if key chord is c major or Eb minor, just repeat that with its relative majors and minors 
     topChords = new int[2];
@@ -118,57 +182,53 @@ void setup(){
     topChords[1] = chordCtr;
     topChords[2] = chordCtr + 1;
   }//if 
-  System.out.println("length of topChords = " + topChords.length);
-  for(int j = 0; j < topChords.length; j++){
-    System.out.println("chord " + topChords[j]);
-  }//for
-  /*
-  melody generation
-  */ 
-  int[] topHues = topVals(hueHist, 7);//get top colours from hue histogram, try to use as melody notes
-  pitches = new int[topHues.length];
-  System.out.println(Arrays.toString(topHues));
-  for(int i = 0; i < topHues.length; i++){
-    pitches[i] = (int) map(topHues[i], 0, 360, 0, 6); 
-  }//for
-  midiNotes = getNotes(chordCtr, sharps);
-}//setup 
-
-void click(){
-  System.out.println("click");
-}//click 
+  midiNotes = getNotes(sharps, topChords);
+}//crackOn
 
 void draw(){
-  //loadPixels();
-  //img.loadPixels();
-  // If value of trigger is equal to the computer clock and if not all 
-  // notes have been played yet, the next note gets triggered.
-  if (millis() > chordTrigger) {
-    if(chord == topChords.length){chord=0;}
-    //usedChords[topChords[chord]].pan(-0.4); MUST BE IN MONO TO PAN 
-    usedChords[topChords[chord]].play(1.0,0.7);
-    chord++;
-    chordTrigger = (int) (millis() + (1/drumsRate)*2000);
-  }//if
-  if(millis() > noteTrigger){
-    // midiToFreq transforms the MIDI value into a frequency in Hz which we use 
-    //to control the triangle oscillator with an amplitute of 0.8
-    if (note == pitches.length) {note = 0;}
-    triOsc.play(Pitch.mtof(midiNotes[pitches[note]]), 0.6);
-    // The envelope gets triggered with the oscillator as input and the times and 
-    // levels we defined earlier   
-    env.play(triOsc, attackTime, sustainTime, sustainLevel, releaseTime);
-    note++; 
-    noteTrigger = (int) (millis() + (1/drumsRate)*2000);
-  }//if 
-  updatePixels();
+  if (imgThere){
+    if(hueToggle){
+      drawHist(hueHist, hueImg, 0); 
+      //satToggle = false;brightToggle = false;
+    }//if
+    if(satToggle){
+      drawHist(satHist, satImg, 1);
+      //brightToggle = false; hueToggle=false;
+    }//if
+    if(brightToggle){
+      drawHist(brightHist, brightImg, 2);
+      //satToggle = false; hueToggle=false;
+    }//if
+    if (millis() > chordTrigger) {
+      if(chord == topChords.length){chord=0;}
+      chord = (int)random(0,topChords.length);
+      //usedChords[topChords[chord]].pan(-0.4); MUST BE IN MONO TO PAN 
+      usedChords[topChords[chord]].play(1.0,0.7);
+      //chord++;
+      chordTrigger = (int) (millis() + (1/drumsRate)*2000);
+    }//if
+    if(millis() > noteTrigger){
+      // midiToFreq transforms the MIDI value into a frequency in Hz which we use 
+      //to control the triangle oscillator with an amplitute of 0.8
+      note = (int)random(0,midiNotes.length);
+      triOsc.play(Pitch.mtof(midiNotes[note]), 0.6);
+      // The envelope gets triggered with the oscillator as input and the times and 
+      // levels we defined earlier   
+      env.play(triOsc, attackTime, sustainTime, sustainLevel, releaseTime);
+      //note++; 
+      noteTrigger = (int) (millis() + (1/(4*drumsRate))*2000);
+    }//if 
+    //updatePixels();
+  }//imgThere 
 }//draw 
 
 /*
 Function to get note of scale based on chord centre and note from hue 
 */
-int[] getNotes(int ctr, boolean sharps){
-  int[] scale = new int[7];
+int[] getNotes(boolean sharps, int[] topChords){
+  int[] scale = new int[5];
+  int ctr;
+  if(topChords.length == 2){ctr = topChords[0];}else{ctr = topChords[2];}
   int x;// decides root note of the scale 
   if(sharps){
     switch(ctr){
@@ -207,12 +267,12 @@ int[] getNotes(int ctr, boolean sharps){
       default: x = 72;
     }//switch 
   }//if 
-  //make diatonic major scale based on what note x is 
+  //make pentatonic scale based on what note x is 
   for(int i = 0; i < scale.length; i++){
     if(i < 3){
       scale[i] = x + 2*i;
     }else{
-      scale[i] = x + (2*i - 1);
+      scale[i] = x + (2*i + 1);
     }//if 
   }//for
   return scale;
@@ -280,12 +340,15 @@ int[] makeHist(PImage img, int choice){
       }//if 
     }//for 
   }//for 
-  
+  //updatePixels();
+  return hist;
+}//makeHist 
+
+void drawHist(int[] hist, PImage img, int choice){
   // Find the largest value in the histogram
   int histMax = max(hist);
   // Draw half of the histogram (skip every second value)
   int scale;
-  
   for (int i = 0; i < img.width; i ++) {
     int c;
     if(choice == 0){
@@ -311,9 +374,7 @@ int[] makeHist(PImage img, int choice){
     int y = int(map(hist[which], 0, histMax, img.height-20, 0));
     line(i, img.height-20, i, y);
   }//for 
-  //updatePixels();
-  return hist;
-}//makeHist 
+}//drawHist
 
 /*
 Uses binary thresholding to determine which side of the circle of 5ths chords will come from 
@@ -395,3 +456,10 @@ float getGray(float r, float g, float b, int way){
     return 0.0;
   }//if 
 }//getGray 
+
+float average(int[] arr){
+  float avg = 0.0; float sum = 0.0;
+  for (int i:arr){sum+=i;}//for
+  avg = sum/arr.length;
+  return avg;
+}//average
