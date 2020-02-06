@@ -9,9 +9,16 @@ import java.util.Random;
 import static java.util.Map.Entry;
 import java.util.LinkedHashMap;
 import controlP5.*;
+import javax.swing.JFileChooser;
+import javax.swing.JButton;
+import java.io.File;
 
+/*
+All the variables I need
+*/
 ControlP5 cp5;
-String imageStr, textFieldCaption = "Type the name of an image file here";
+String imageStr;
+String audio = "audio/";
 PImage img, hueImg, satImg, brightImg;
 AudioContext ac;
 // Times and levels for the ASR envelope
@@ -38,7 +45,12 @@ int chord = 0;
 float drumsRate;
 boolean sharps, hueToggle, satToggle, brightToggle, imgThere;
 Random rand = new Random();
+
+/*
+Setup time 
+*/
 void setup(){
+  imageMode(CORNER);
   hueToggle = satToggle = brightToggle = imgThere = false;
   /*
   selecting a HSB color model
@@ -58,47 +70,39 @@ void setup(){
   prepare circle of 5ths of chords 
   */
   for(int i = 0; i < usedChords.length; i++){
-    sharpChords[i] = new SoundFile(this, "sharp Chord " + i + ".wav");
-    flatChords[i] = new SoundFile(this, "flat Chord " + i + ".wav");
+    sharpChords[i] = new SoundFile(this, audio+"sharp Chord " + i + ".wav");
+    flatChords[i] = new SoundFile(this, audio+"flat Chord " + i + ".wav");
   }//for 
   
   //MAKE SURE THE img.height IS 20 PX MORE THAN THE ACTUAL img.height SO THAT THE COLOUR BAR CAN FIT ONTO THE SCREEN 
   size(2160, 1080);
   //fullScreen();
   cp5 = new ControlP5(this);
-  cp5.addTextfield(textFieldCaption)
-    .setPosition(width - width/4,30)
-    .setSize(width/8,50)
-    .setText("Type here")
-    .setFont(font)
-    .setAutoClear(false);
-  cp5.addBang("generate")
-    .setPosition(width - width/4,130)
-    .setSize(100,50)
-    .setColorValue(0xffffff00);
-  cp5.addButton("hues")
+  cp5.addBang("hues")
     .setValue(0)
-    .setPosition(width - width/4,230)
+    .setPosition(100,50)
     .setSize(100,50);
-  cp5.addButton("saturations")
+  cp5.addBang("saturations")
     .setValue(0)
-    .setPosition(width - width/4,330)
+    .setPosition(width/2 - 50,50)
     .setSize(100,50);
-  cp5.addButton("brightnesses")
+  cp5.addBang("brightnesses")
     .setValue(0)
-    .setPosition(width - width/4,430)
+    .setPosition(width/2 + width/4,50)
     .setSize(100,50);
-  cp5.getController(textFieldCaption)
-    .getCaptionLabel()
-    .setFont(font)
-    .toUpperCase(false)
-    .setSize(20);
-  cp5.getController("generate")
-    .getCaptionLabel()
-    .setFont(font)
-    .toUpperCase(false)
-    .setSize(20);
-  //String str = "dlb.jpg";
+  JButton open = new JButton();
+  JFileChooser fc = new JFileChooser();
+  String rootDir = "C:/Users/tscte/Desktop/Uni/2019-20/Third Year Project/generation/data";
+  fc.setCurrentDirectory(new java.io.File(rootDir));
+  fc.setDialogTitle("Select an image file (.jpg or .png)");
+  fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
+  if(fc.showOpenDialog(open) == JFileChooser.APPROVE_OPTION){
+    imgThere = true;
+  }//if 
+  imageStr = fc.getSelectedFile().getAbsolutePath();
+  //imageStr = cp5.get(Textfield.class,"Type the name of an image file here").getText();
+  //imgThere = true;
+  crackOn(imageStr);
 }//setup 
 
 void hues(){
@@ -113,19 +117,13 @@ void brightnesses(){
   if(!brightToggle){brightToggle=true;}else{brightToggle=false;}
 }//brightness
 
-void generate(){
-  imageStr = cp5.get(Textfield.class,"Type the name of an image file here").getText();
-  imgThere = true;
-  crackOn(imageStr);
-}//submit
-
 void crackOn(String imageStr){
   //image display   
   img = loadImage(imageStr);
   hueImg = loadImage(imageStr);
   satImg = loadImage(imageStr);
   brightImg = loadImage(imageStr);
-  image(img,0,0);
+  image(img, 100,100,img.width, img.height);
   
   /*
   histograms generation 
@@ -143,7 +141,8 @@ void crackOn(String imageStr){
   int hmiSat = maxIndex(satHist);
   drumsRate = map(hmiSat, 0, 100, 0.67, 1.33);
   //System.out.println("drumsRate = " + drumsRate);
-  drums = new SoundFile(this, "medium drum pattern.wav");
+  
+  drums = new SoundFile(this, audio+"medium drum pattern.wav");
   drums.loop(drumsRate);
   
   /*
@@ -188,16 +187,19 @@ void crackOn(String imageStr){
 void draw(){
   if (imgThere){
     if(hueToggle){
+      System.out.println("hueToggle = " + hueToggle);
       drawHist(hueHist, hueImg, 0); 
-      //satToggle = false;brightToggle = false;
+      satToggle = false;brightToggle = false;
     }//if
     if(satToggle){
+      System.out.println("satToggle = " + satToggle);
       drawHist(satHist, satImg, 1);
-      //brightToggle = false; hueToggle=false;
+      brightToggle = false; hueToggle=false;
     }//if
     if(brightToggle){
+      System.out.println("brightToggle = " + brightToggle);
       drawHist(brightHist, brightImg, 2);
-      //satToggle = false; hueToggle=false;
+      satToggle = false; hueToggle=false;
     }//if
     if (millis() > chordTrigger) {
       if(chord == topChords.length){chord=0;}
@@ -309,6 +311,7 @@ Constructs histogram for hue, saturation or brightness
 */
 int[] makeHist(PImage img, int choice){
   //loadPixels();
+  int offset = 100;
   int[] hist;
   if(choice == 0){
     hist = new int[360];//hue 
@@ -316,7 +319,7 @@ int[] makeHist(PImage img, int choice){
     for(int i = 0; i < img.width; i++){
       int c = (int) map(i, 0, img.width, 0, 360);
       stroke(c,100,100);
-      rect(i, img.height - 20, 1, 20);
+      rect(offset+i, offset+img.height - 20, 1, 20);
     }//for 
   } else {
     hist = new int[101];//saturation, brightness 
@@ -345,6 +348,9 @@ int[] makeHist(PImage img, int choice){
 }//makeHist 
 
 void drawHist(int[] hist, PImage img, int choice){
+  imageMode(CORNER);
+  image(img, 100,100,img.width, img.height);
+  int offset = 100;
   // Find the largest value in the histogram
   int histMax = max(hist);
   // Draw half of the histogram (skip every second value)
@@ -372,7 +378,7 @@ void drawHist(int[] hist, PImage img, int choice){
     // Convert the histogram value to a location between 
     // the bottom and the top of the picture
     int y = int(map(hist[which], 0, histMax, img.height-20, 0));
-    line(i, img.height-20, i, y);
+    line(offset+i, offset+img.height-20, offset+i, offset+y);
   }//for 
 }//drawHist
 
