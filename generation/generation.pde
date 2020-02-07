@@ -64,7 +64,7 @@ void setup(){
   usedChords = new SoundFile[14];
   
   PFont pfont = createFont("Arial",20,true);
-  ControlFont font = new ControlFont(pfont,30);
+  ControlFont font = new ControlFont(pfont,18);
   
   /*
   prepare circle of 5ths of chords 
@@ -79,17 +79,23 @@ void setup(){
   //fullScreen();
   cp5 = new ControlP5(this);
   cp5.addBang("hues")
-    .setValue(0)
-    .setPosition(100,50)
-    .setSize(100,50);
+    .setId(0)
+    .setPosition(100,25)
+    .setSize(100,50)
+    .setFont(font)
+    .setTriggerEvent(Bang.RELEASE);
   cp5.addBang("saturations")
-    .setValue(0)
-    .setPosition(width/2 - 50,50)
-    .setSize(100,50);
+    .setId(1)
+    .setPosition(250,25)
+    .setSize(100,50)
+    .setFont(font)
+    .setTriggerEvent(Bang.RELEASE);
   cp5.addBang("brightnesses")
-    .setValue(0)
-    .setPosition(width/2 + width/4,50)
-    .setSize(100,50);
+    .setId(2)
+    .setPosition(400,25)
+    .setSize(100,50)
+    .setFont(font)
+    .setTriggerEvent(Bang.RELEASE);
   JButton open = new JButton();
   JFileChooser fc = new JFileChooser();
   String rootDir = "C:/Users/tscte/Desktop/Uni/2019-20/Third Year Project/generation/data";
@@ -106,16 +112,28 @@ void setup(){
 }//setup 
 
 void hues(){
-  if(!hueToggle){hueToggle=true;}else{hueToggle=false;}//if 
+  hueToggle = !hueToggle;
 }//hues
 
 void saturations(){
-  if(!satToggle){satToggle=true;}else{satToggle=false;}
+  satToggle = !satToggle;
 }//saturations
 
 void brightnesses(){
-  if(!brightToggle){brightToggle=true;}else{brightToggle=false;}
+  brightToggle = !brightToggle;
 }//brightness
+
+public void controlEvent(ControlEvent theEvent){
+  if(theEvent.getController().getName().equals("hues")){
+    drawHist(hueHist, hueImg, 0); 
+  }//if
+  if(theEvent.getController().getName().equals("saturations")){
+    drawHist(satHist, satImg, 1); 
+  }//if 
+  if(theEvent.getController().getName().equals("brightnesses")){
+    drawHist(brightHist, brightImg, 2); 
+  }//if 
+}//controlEvent
 
 void crackOn(String imageStr){
   //image display   
@@ -186,27 +204,10 @@ void crackOn(String imageStr){
 
 void draw(){
   if (imgThere){
-    if(hueToggle){
-      System.out.println("hueToggle = " + hueToggle);
-      drawHist(hueHist, hueImg, 0); 
-      satToggle = false;brightToggle = false;
-    }//if
-    if(satToggle){
-      System.out.println("satToggle = " + satToggle);
-      drawHist(satHist, satImg, 1);
-      brightToggle = false; hueToggle=false;
-    }//if
-    if(brightToggle){
-      System.out.println("brightToggle = " + brightToggle);
-      drawHist(brightHist, brightImg, 2);
-      satToggle = false; hueToggle=false;
-    }//if
     if (millis() > chordTrigger) {
       if(chord == topChords.length){chord=0;}
       chord = (int)random(0,topChords.length);
-      //usedChords[topChords[chord]].pan(-0.4); MUST BE IN MONO TO PAN 
       usedChords[topChords[chord]].play(1.0,0.7);
-      //chord++;
       chordTrigger = (int) (millis() + (1/drumsRate)*2000);
     }//if
     if(millis() > noteTrigger){
@@ -217,10 +218,8 @@ void draw(){
       // The envelope gets triggered with the oscillator as input and the times and 
       // levels we defined earlier   
       env.play(triOsc, attackTime, sustainTime, sustainLevel, releaseTime);
-      //note++; 
       noteTrigger = (int) (millis() + (1/(4*drumsRate))*2000);
     }//if 
-    //updatePixels();
   }//imgThere 
 }//draw 
 
@@ -315,12 +314,6 @@ int[] makeHist(PImage img, int choice){
   int[] hist;
   if(choice == 0){
     hist = new int[360];//hue 
-    //draw the line at the bottom of the image, representing hue values from 0 to 360
-    for(int i = 0; i < img.width; i++){
-      int c = (int) map(i, 0, img.width, 0, 360);
-      stroke(c,100,100);
-      rect(offset+i, offset+img.height - 20, 1, 20);
-    }//for 
   } else {
     hist = new int[101];//saturation, brightness 
   }//if
@@ -343,7 +336,6 @@ int[] makeHist(PImage img, int choice){
       }//if 
     }//for 
   }//for 
-  //updatePixels();
   return hist;
 }//makeHist 
 
@@ -360,6 +352,7 @@ void drawHist(int[] hist, PImage img, int choice){
     if(choice == 0){
       c = (int) map(i, 0, img.width, 0, 360);
       stroke(c,100,100);//H
+      rect(offset+i, offset+img.height - 20, 1, 20);
     } else if (choice == 1) {
       c = (int) map(i, 0, img.width, 0, 100);
       stroke(360, c, 100);//S
@@ -377,8 +370,8 @@ void drawHist(int[] hist, PImage img, int choice){
     int which = int(map(i, 0, img.width, 0, scale));
     // Convert the histogram value to a location between 
     // the bottom and the top of the picture
-    int y = int(map(hist[which], 0, histMax, img.height-20, 0));
-    line(offset+i, offset+img.height-20, offset+i, offset+y);
+    int y = int(map(hist[which], 0, histMax, img.height, 0));
+    line(offset+i, offset+img.height, offset+i, offset+y);
   }//for 
 }//drawHist
 
