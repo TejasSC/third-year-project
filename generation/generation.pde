@@ -21,25 +21,19 @@ String imageStr;
 String audio = "audio/";
 PImage img, hueImg, satImg, brightImg;
 AudioContext ac;
-// Times and levels for the ASR envelope
-float attackTime = 0.004;
-float sustainTime = 0.002;
-float sustainLevel = 0.4;
-float releaseTime = 0.2;
 //int[] hist, topVals, localMaxima;
 SoundFile[] sharpChords;
 SoundFile[] flatChords; 
 SoundFile[] usedChords;
+SoundFile[] melodyPhrases;
 int[] topChords;
 SoundFile drums;
-// Oscillator and envelope 
-TriOsc triOsc;
 Env env; 
 // Set the note trigger
 int chordTrigger = 0, noteTrigger = 0; 
 int chordCtr, pitch;
 float[] freqs, amps;
-int[] rhythms, topVals, midiNotes, pitches, hueHist, satHist, brightHist;
+int[] rhythms, topVals, pitches, hueHist, satHist, brightHist;
 int note = 0;//index counts the notes 
 int chord = 0;
 float drumsRate;
@@ -57,7 +51,6 @@ void setup(){
   */
   colorMode(HSB, 360, 100, 100);
   background(0);
-  triOsc = new TriOsc(this);
   env  = new Env(this);
   sharpChords = new SoundFile[14];
   flatChords = new SoundFile[14];
@@ -199,7 +192,7 @@ void crackOn(String imageStr){
     topChords[1] = chordCtr;
     topChords[2] = chordCtr + 1;
   }//if 
-  midiNotes = getNotes(sharps, topChords);
+  melodyPhrases = getNotes(sharps, topChords, avg);
 }//crackOn
 
 void draw(){
@@ -213,70 +206,39 @@ void draw(){
     if(millis() > noteTrigger){
       // midiToFreq transforms the MIDI value into a frequency in Hz which we use 
       //to control the triangle oscillator with an amplitute of 0.8
-      note = (int)random(0,midiNotes.length);
-      triOsc.play(Pitch.mtof(midiNotes[note]), 0.6);
+      //note = (int)random(0,melodyPhrases.length);
+      melodyPhrases[0].play(1.0, 0.9);
       // The envelope gets triggered with the oscillator as input and the times and 
       // levels we defined earlier   
-      env.play(triOsc, attackTime, sustainTime, sustainLevel, releaseTime);
-      noteTrigger = (int) (millis() + (1/(4*drumsRate))*2000);
+      //env.play(triOsc, attackTime, sustainTime, sustainLevel, releaseTime);
+      noteTrigger = (int) (millis() + (1/drumsRate)*2000);
     }//if 
   }//imgThere 
 }//draw 
 
 /*
-Function to get note of scale based on chord centre and note from hue 
+Function to get melody instrument based off of most common hue in picture 
 */
-int[] getNotes(boolean sharps, int[] topChords){
-  int[] scale = new int[5];
+SoundFile[] getNotes(boolean sharps, int[] topChords, int avg){
+  SoundFile[] phrases = new SoundFile[1];
   int ctr;
   if(topChords.length == 2){ctr = topChords[0];}else{ctr = topChords[2];}
-  int x;// decides root note of the scale 
-  if(sharps){
-    switch(ctr){
-      case 0: x = 72; break;
-      case 1: x = 72; break;
-      case 2: x = 79; break;
-      case 3: x = 79; break;
-      case 4: x = 74; break;
-      case 5: x = 74; break;
-      case 6: x = 81; break;
-      case 7: x = 81; break;
-      case 8: x = 76; break;
-      case 9: x = 76; break;
-      case 10: x = 83; break;
-      case 11: x = 83; break;
-      case 12: x = 78; break;
-      case 13: x = 78; break;
-      default: x = 72;
-    }//switch 
-  } else {
-    switch(ctr){
-      case 0: x = 72; break;
-      case 1: x = 72; break;
-      case 2: x = 77; break;
-      case 3: x = 77; break;
-      case 4: x = 82; break;
-      case 5: x = 82; break;
-      case 6: x = 75; break;
-      case 7: x = 75; break;
-      case 8: x = 80; break;
-      case 9: x = 80; break;
-      case 10: x = 73; break;
-      case 11: x = 73; break;
-      case 12: x = 78; break;
-      case 13: x = 78; break;
-      default: x = 72;
-    }//switch 
-  }//if 
-  //make pentatonic scale based on what note x is 
-  for(int i = 0; i < scale.length; i++){
-    if(i < 3){
-      scale[i] = x + 2*i;
-    }else{
-      scale[i] = x + (2*i + 1);
-    }//if 
-  }//for
-  return scale;
+  int pair = ctr/2;
+  String melodies = "melodies/"; String tonality = ""; String instrument = "";
+  if(sharps){tonality += "sharp Chord/";}else{tonality += "flat Chord/";}
+  switch(avg/72){
+    case 0: instrument += "guitar"; break;
+    case 1: instrument += "piano"; break;
+    case 2: instrument += "sine"; break;
+    case 3: instrument += "synth"; break;
+    //case 4: instrument += "trumpet"; break;
+    default:instrument += "trumpet"; break;
+  }//switch
+  //if(avg/60 < 3){instrument += "guitar";}else{instrument +="piano";}
+  
+  String path = audio+melodies + tonality + pair + "/" + instrument + "/0.wav";
+  phrases[0] = new SoundFile(this, path);
+  return phrases;
 }//getNote
 
 /*
@@ -309,8 +271,6 @@ int maxIndex(int[] arr){
 Constructs histogram for hue, saturation or brightness 
 */
 int[] makeHist(PImage img, int choice){
-  //loadPixels();
-  int offset = 100;
   int[] hist;
   if(choice == 0){
     hist = new int[360];//hue 
