@@ -26,16 +26,14 @@ SoundFile[] sharpChords;
 SoundFile[] flatChords; 
 SoundFile[] usedChords;
 SoundFile[] melodyPhrases;
-int[] topChords;
 SoundFile drums;
 Env env; 
 // Set the note trigger
-int chordTrigger = 0, noteTrigger = 0; 
+int[] topChords, rhythms, topVals, pitches, hueHist, satHist, brightHist;
+int chordTrigger = 0, noteTrigger = 0, note = 0, chord = 0;
 int chordCtr, pitch;
 float[] freqs, amps;
-int[] rhythms, topVals, pitches, hueHist, satHist, brightHist;
-int note = 0;//index counts the notes 
-int chord = 0;
+float drumTime = 16000/3;
 float drumsRate;
 boolean sharps, hueToggle, satToggle, brightToggle, imgThere;
 Random rand = new Random();
@@ -71,6 +69,10 @@ void setup(){
   size(2160, 1080);
   //fullScreen();
   cp5 = new ControlP5(this);
+  String desc = "Click the buttons on the left to view different histograms";
+  textFont(pfont);
+  textSize(32);
+  text(desc, width/2, 50);
   cp5.addBang("hues")
     .setId(0)
     .setPosition(100,25)
@@ -93,11 +95,12 @@ void setup(){
   JFileChooser fc = new JFileChooser();
   String rootDir = "C:/Users/tscte/Desktop/Uni/2019-20/Third Year Project/generation/data";
   fc.setCurrentDirectory(new java.io.File(rootDir));
-  fc.setDialogTitle("Select an image file (.jpg or .png)");
+  String menuHeader = "Welcome! Select an image file (.jpg or .png)";
+  fc.setDialogTitle(menuHeader);
   fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
   if(fc.showOpenDialog(open) == JFileChooser.APPROVE_OPTION){
     imgThere = true;
-  }//if 
+  } else {System.exit(0);}//if 
   imageStr = fc.getSelectedFile().getAbsolutePath();
   //imageStr = cp5.get(Textfield.class,"Type the name of an image file here").getText();
   //imgThere = true;
@@ -115,6 +118,10 @@ void saturations(){
 void brightnesses(){
   brightToggle = !brightToggle;
 }//brightness
+
+//void project(){
+  
+//}//project 
 
 public void controlEvent(ControlEvent theEvent){
   if(theEvent.getController().getName().equals("hues")){
@@ -150,10 +157,17 @@ void crackOn(String imageStr){
   drum generation
   */
   int hmiSat = maxIndex(satHist);
-  drumsRate = map(hmiSat, 0, 100, 0.67, 1.33);
+  //drumsRate = map(hmiSat, 0, 100, 0.9, 1.1);
+  if(hmiSat < 33){
+    drumsRate = 1/2;
+  } else if (hmiSat < 67 && hmiSat >= 33){
+    drumsRate = 3/4;
+  } else if (hmiSat >= 67) {
+    drumsRate = 1.0;
+  }//if 
   //System.out.println("drumsRate = " + drumsRate);
-  
   drums = new SoundFile(this, audio+"medium drum pattern.wav");
+  //System.out.println("duration is " + drums.duration());
   drums.loop(drumsRate);
   
   /*
@@ -201,17 +215,11 @@ void draw(){
       if(chord == topChords.length){chord=0;}
       chord = (int)random(0,topChords.length);
       usedChords[topChords[chord]].play(1.0,0.7);
-      chordTrigger = (int) (millis() + (1/drumsRate)*2000);
+      chordTrigger = (int) (millis() + 2000);
     }//if
     if(millis() > noteTrigger){
-      // midiToFreq transforms the MIDI value into a frequency in Hz which we use 
-      //to control the triangle oscillator with an amplitute of 0.8
-      //note = (int)random(0,melodyPhrases.length);
       melodyPhrases[0].play(1.0, 0.9);
-      // The envelope gets triggered with the oscillator as input and the times and 
-      // levels we defined earlier   
-      //env.play(triOsc, attackTime, sustainTime, sustainLevel, releaseTime);
-      noteTrigger = (int) (millis() + (1/drumsRate)*2000);
+      noteTrigger = (int) (millis() + 2000);
     }//if 
   }//imgThere 
 }//draw 
