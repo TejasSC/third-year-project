@@ -19,7 +19,8 @@ All the variables I need
 ControlP5 cp5;
 String imageStr;
 String audio = "audio/";
-PImage img, hueImg, satImg, brightImg;
+PImage img, displayImg, hueImg, satImg, brightImg;
+PGraphics pg;
 AudioContext ac;
 //int[] hist, topVals, localMaxima;
 SoundFile[] sharpChords;
@@ -55,7 +56,7 @@ void setup(){
   usedChords = new SoundFile[14];
   
   PFont pfont = createFont("Arial",20,true);
-  ControlFont font = new ControlFont(pfont,18);
+  ControlFont font = new ControlFont(pfont,16);
   
   /*
   prepare circle of 5ths of chords 
@@ -65,14 +66,14 @@ void setup(){
     flatChords[i] = new SoundFile(this, audio+"flat Chord " + i + ".wav");
   }//for 
   
-  //MAKE SURE THE img.height IS 20 PX MORE THAN THE ACTUAL img.height SO THAT THE COLOUR BAR CAN FIT ONTO THE SCREEN 
   size(2160, 1080);
+  pg = createGraphics(width,height, JAVA2D);
   //fullScreen();
   cp5 = new ControlP5(this);
-  String desc = "Click the buttons on the left to view different histograms";
+  String prompt = "Click the buttons on the left to view different histograms";  
   textFont(pfont);
-  textSize(32);
-  text(desc, width/2, 50);
+  textSize(16);
+  text(prompt, 550, 50);
   cp5.addBang("hues")
     .setId(0)
     .setPosition(100,25)
@@ -91,6 +92,19 @@ void setup(){
     .setSize(100,50)
     .setFont(font)
     .setTriggerEvent(Bang.RELEASE);
+  cp5.addBang("Load another image")
+    .setId(3)
+    .setPosition(width-600, 25)
+    .setSize(200,50)
+    .setFont(font)
+    .setTriggerEvent(Bang.RELEASE);
+  //cp5.addBang("Play/pause")
+  //  .setId(4)
+  //  .setPosition(width-800, 25)
+  //  .setSize(100,50)
+  //  .setFont(font)
+    
+  
   JButton open = new JButton();
   JFileChooser fc = new JFileChooser();
   String rootDir = "C:/Users/tscte/Desktop/Uni/2019-20/Third Year Project/generation/data";
@@ -119,9 +133,6 @@ void brightnesses(){
   brightToggle = !brightToggle;
 }//brightness
 
-//void project(){
-  
-//}//project 
 
 public void controlEvent(ControlEvent theEvent){
   if(theEvent.getController().getName().equals("hues")){
@@ -133,6 +144,10 @@ public void controlEvent(ControlEvent theEvent){
   if(theEvent.getController().getName().equals("brightnesses")){
     drawHist(brightHist, brightImg, 2); 
   }//if 
+  if(theEvent.getController().getId() == 3){
+    drums.stop();
+    setup();
+  }//if
 }//controlEvent
 
 void crackOn(String imageStr){
@@ -141,7 +156,7 @@ void crackOn(String imageStr){
   hueImg = loadImage(imageStr);
   satImg = loadImage(imageStr);
   brightImg = loadImage(imageStr);
-  image(img, 100,100,img.width, img.height);
+  image(img,100,100,img.width, img.height);
   
   /*
   histograms generation 
@@ -157,14 +172,14 @@ void crackOn(String imageStr){
   drum generation
   */
   int hmiSat = maxIndex(satHist);
-  //drumsRate = map(hmiSat, 0, 100, 0.9, 1.1);
-  if(hmiSat < 33){
-    drumsRate = 1/2;
-  } else if (hmiSat < 67 && hmiSat >= 33){
-    drumsRate = 3/4;
-  } else if (hmiSat >= 67) {
-    drumsRate = 1.0;
-  }//if 
+  drumsRate = map(hmiSat, 0, 100, 0.75, 1.0);
+  //if(hmiSat < 33){
+  //  drumsRate = 0.5;
+  //} else if (hmiSat < 67 && hmiSat >= 33){
+  //  drumsRate = 0.75;
+  //} else if (hmiSat >= 67) {
+  //  drumsRate = 1.0;
+  //}//if 
   //System.out.println("drumsRate = " + drumsRate);
   drums = new SoundFile(this, audio+"medium drum pattern.wav");
   //System.out.println("duration is " + drums.duration());
@@ -239,11 +254,8 @@ SoundFile[] getNotes(boolean sharps, int[] topChords, int avg){
     case 1: instrument += "piano"; break;
     case 2: instrument += "sine"; break;
     case 3: instrument += "synth"; break;
-    //case 4: instrument += "trumpet"; break;
     default:instrument += "trumpet"; break;
   }//switch
-  //if(avg/60 < 3){instrument += "guitar";}else{instrument +="piano";}
-  
   String path = audio+melodies + tonality + pair + "/" + instrument + "/0.wav";
   phrases[0] = new SoundFile(this, path);
   return phrases;
@@ -259,8 +271,7 @@ int[] topVals(int[] arr, int num){
     int hmiHue = maxIndex(topArr);
     topHues[i] = hmiHue;
     topArr[hmiHue] = -1;
-  }//for 
-  //System.out.println(Arrays.toString(topHues));
+  }//for
   return topHues;
 }//topVals
 
@@ -310,6 +321,7 @@ int[] makeHist(PImage img, int choice){
 void drawHist(int[] hist, PImage img, int choice){
   imageMode(CORNER);
   image(img, 100,100,img.width, img.height);
+  
   int offset = 100;
   // Find the largest value in the histogram
   int histMax = max(hist);
