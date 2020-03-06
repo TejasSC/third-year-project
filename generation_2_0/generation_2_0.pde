@@ -56,6 +56,7 @@ void setup(){
   usedChords = new SoundFile[14];
   
   PFont pfont = createFont("Helvetica",24,true);
+  ControlFont fontS = new ControlFont(pfont,11);
   ControlFont font = new ControlFont(pfont,17);
   ControlFont fontD = new ControlFont(pfont,21);
   
@@ -121,6 +122,12 @@ void setup(){
     .setColorActive(color(0, 100, 100))
     .setColorBackground(color(0, 100, 100))
     .setTriggerEvent(Bang.RELEASE);
+  cp5.addKnob("Speed of Drums")
+    .setPosition(width - 200, 100)
+    .setSize(60,60)
+    .setValue(0.5)
+    .setFont(fontS)
+    .setRange(0,1);
   desc = cp5.addTextarea("popUp")
     .setPosition(100, height - 100)
     .setSize((width - 200), 75)
@@ -165,7 +172,7 @@ public void controlEvent(ControlEvent theEvent){
       " tracked as the hue value increases from 0 to 360.\nThe hue" +
       " determines the instrument that plays as a melody over the drums"+
       " and chords. Scroll down to see more info on colour to instrument mappings:\n"+
-      "Red to yellow: guitar\nYellow-green to very green: piano\n"+
+      " Red to yellow: guitar\nYellow-green to very green: piano\n"+
       "Green-blue to purple-blue: sine wave\nPurple-blue to purple-pink: synth chords\n"+
       "purple-pink to red: trumpet";
     desc.setText(content);
@@ -187,7 +194,16 @@ public void controlEvent(ControlEvent theEvent){
     " techniques and music theory ideas to generate the chord progression.";
     desc.setText(content);
     drawHist(brightHist, brightImg, 2); 
-  }//if 
+  }//if
+  
+    //dragging slider1 changes the value of slider2
+  if(theEvent.getController().getName()=="Speed of the drums"){
+    drumsRate = theEvent.getController().getValue();
+    drums.stop();
+    drums.play(drumsRate);
+   // prevent warnings at start
+  }
+
   if(theEvent.getController().getId() == 3){
     drums.stop();
     setup();
@@ -267,11 +283,11 @@ void draw(){
     if (millis() > chordTrigger) {
       if(chord == topChords.length){chord=0;}
       chord = (int)random(0,topChords.length);
-      usedChords[topChords[chord]].play(1.0,0.9);
+      usedChords[topChords[chord]].play(1.0,0.7);
       chordTrigger = (int) (millis() + 2000);
     }//if
     if(millis() > noteTrigger){
-      melodyPhrases[0].play(1.0, 0.7);
+      melodyPhrases[0].play(1.0, 0.9);
       noteTrigger = (int) (millis() + 2000);
     }//if 
   }//imgThere 
