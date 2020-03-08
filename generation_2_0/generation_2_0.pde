@@ -16,10 +16,10 @@ import java.io.File;
 /*
 All the variables I need
 */
-ControlP5 cp5; Textarea desc;
+ControlP5 cp5; Textarea desc, satDesc;
 String imageStr;
 String audio = "audio/";
-PImage img, displayImg, hueImg, satImg, brightImg;
+PImage img, displayImg, hueImg, satImg, brightImg, newSat;
 PGraphics pg;
 AudioContext ac;
 //int[] hist, topVals, localMaxima;
@@ -30,12 +30,12 @@ SoundFile[] melodyPhrases;
 SoundFile drums;
 Env env; 
 // Set the note trigger
-int[] topChords, rhythms, topVals, pitches, hueHist, satHist, brightHist;
+int[] topChords, rhythms, topVals, pitches, hueHist, satHist, brightHist, newSatHist = null;
 int chordTrigger = 0, noteTrigger = 0, note = 0, chord = 0;
 int chordCtr, pitch;
 float[] freqs, amps;
 float drumTime = 16000/3;
-float drumsRate;
+float drumsRate, drumBPM, firstDrumBPM;
 boolean sharps, hueToggle, satToggle, brightToggle, imgThere;
 Random rand = new Random();
 
@@ -50,13 +50,13 @@ void setup(){
   */
   colorMode(HSB, 360, 100, 100);
   background(0);
-  env  = new Env(this);
+  smooth();
   sharpChords = new SoundFile[14];
   flatChords = new SoundFile[14];
   usedChords = new SoundFile[14];
   
   PFont pfont = createFont("Helvetica",24,true);
-  ControlFont fontS = new ControlFont(pfont,11);
+  ControlFont fontS = new ControlFont(pfont,14);
   ControlFont font = new ControlFont(pfont,17);
   ControlFont fontD = new ControlFont(pfont,21);
   
@@ -68,11 +68,11 @@ void setup(){
     flatChords[i] = new SoundFile(this, audio+"flat Chord " + i + ".wav");
   }//for 
   
-  //size(2160, 1080);
   fullScreen();
   cp5 = new ControlP5(this);
-  String prompt = "Click the buttons on the left to view different histograms\n"+
-    "Click the buttons on the right to load more images or exit";  
+  String prompt = "Click left buttons to view different histograms of ORIGINAL image\n"+
+    "Click right buttons to load MORE images or EXIT";  
+  String satExtra = "Adjust knob and press button below to see real time graphical and musical effects";
   textFont(pfont);
   textSize(24);
   textAlign(CENTER);
@@ -122,12 +122,29 @@ void setup(){
     .setColorActive(color(0, 100, 100))
     .setColorBackground(color(0, 100, 100))
     .setTriggerEvent(Bang.RELEASE);
-  cp5.addKnob("Speed of Drums")
-    .setPosition(width - 200, 100)
-    .setSize(60,60)
-    .setValue(0.5)
+  satDesc = cp5.addTextarea("satDesc")
+    .setPosition(width - 200, 140)
+    .setSize(100,160)
     .setFont(fontS)
-    .setRange(0,1);
+    .setColor(color(360))
+    .setColorBackground(color(30))
+    .setText(satExtra);
+  cp5.addKnob("Drums speed \n(beats per minute)")
+    .setId(5)
+    .setPosition(width - 200, 320)
+    .setSize(100,100)
+    .setValue(firstDrumBPM)
+    .setFont(fontS)
+    .setRange(45,90);
+  cp5.addBang("real time \nsaturations")
+    .setId(6)
+    .setPosition(width - 200, 500)
+    .setSize(100,50)
+    .setFont(font)
+    .setColorValue(color(66, 100, 100))
+    .setColorActive(color(66, 100, 100))
+    .setColorBackground(color(66, 100, 100))
+    .setTriggerEvent(Bang.RELEASE);
   desc = cp5.addTextarea("popUp")
     .setPosition(100, height - 100)
     .setSize((width - 200), 75)
@@ -136,18 +153,16 @@ void setup(){
     .setColorBackground(color(30));
   JButton open = new JButton();
   JFileChooser fc = new JFileChooser();
-  String rootDir = "C:/Users/tscte/Desktop/Uni/2019-20/Third Year Project/generation/data";
+  String rootDir = "C:/Users/tscte/Desktop/Uni/2019-20/Third Year Project/generation_2_0/data";
   fc.setCurrentDirectory(new java.io.File(rootDir));
   String menuHeader = "Welcome! Select an image file (.jpg or .png)";
   fc.setDialogTitle(menuHeader);
   fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
   if(fc.showOpenDialog(open) == JFileChooser.APPROVE_OPTION){
     imgThere = true;
+    imageStr = fc.getSelectedFile().getAbsolutePath();
+    crackOn(imageStr);
   } else {System.exit(0);}//if 
-  imageStr = fc.getSelectedFile().getAbsolutePath();
-  //imageStr = cp5.get(Textfield.class,"Type the name of an image file here").getText();
-  //imgThere = true;
-  crackOn(imageStr);
 }//setup 
 
 void hues(){
@@ -196,15 +211,33 @@ public void controlEvent(ControlEvent theEvent){
     drawHist(brightHist, brightImg, 2); 
   }//if
   
-    //dragging slider1 changes the value of slider2
-  if(theEvent.getController().getName()=="Speed of the drums"){
-    drumsRate = theEvent.getController().getValue();
+  //Adjust the drum speed and also the saturation 
+  if(theEvent.getController().getId() == 5){
+    drumsRate = map(theEvent.getController().getValue(), 45, 90, 0.5, 1);
     drums.stop();
-    drums.play(drumsRate);
-   // prevent warnings at start
-  }
-
+    drums.loop(drumsRate);
+    drumBPM = theEvent.getController().getValue();
+  }//if
+  
+  //Actually display the image with edited saturation 
+  if(theEvent.getController().getId() == 6){
+    newSat = loadImage(imageStr);
+    for(int x = 0; x < newSat.width - 1; x++){
+      for(int y = 0; y < newSat.height; y++){
+        int loc = y*newSat.width + x;
+        float h = hue(img.pixels[loc]);
+        float b = brightness(img.pixels[loc]);
+        float s = map(drumBPM, 45, 90, 0, 100);
+        newSat.pixels[loc] = color(h, s, b);
+      }//for 
+    }//for 
+    newSatHist = makeHist(newSat, 1);
+    drawHist(newSatHist, newSat, 1); 
+  }//if
+  
   if(theEvent.getController().getId() == 3){
+    newSatHist = null;
+    drums.play(1.0,0.0);
     drums.stop();
     setup();
   }//if
@@ -213,29 +246,36 @@ public void controlEvent(ControlEvent theEvent){
   }//if
 }//controlEvent
 
+void remove(PImage img){
+  if(img!=null){
+    fill(color(0));
+    rect(100,100,img.width, img.height);
+  }//if 
+}//remove 
+
 void crackOn(String imageStr){
+  System.out.println("crackOn method entered");
   //image display   
   img = loadImage(imageStr);
+  //copies of image for histogram generation 
   hueImg = loadImage(imageStr);
   satImg = loadImage(imageStr);
   brightImg = loadImage(imageStr);
-  image(img,100,100,img.width, img.height);
   
+  image(img,100,100,img.width, img.height);
   /*
   histograms generation 
   */
-  PImage brightImage = loadImage(imageStr);
-  PImage satImage = loadImage(imageStr);
-  PImage hueImage = loadImage(imageStr);
-  hueHist = makeHist(hueImage,0);//H
-  satHist = makeHist(satImage,1);//S
-  brightHist = makeHist(brightImage,2);//B
+  hueHist = makeHist(hueImg,0);//H
+  satHist = makeHist(satImg,1);//S
+  brightHist = makeHist(brightImg,2);//B
   
   /*
   drum generation
   */
   int hmiSat = maxIndex(satHist);
-  drumsRate = map(hmiSat, 0, 100, 0.75, 1.0);
+  drumsRate = map(hmiSat, 0, 100, 0.5, 1.0);
+  firstDrumBPM = map(hmiSat, 0, 100, 45, 90);
   drums = new SoundFile(this, audio+"medium drum pattern.wav");
   drums.loop(drumsRate);
   
@@ -259,7 +299,7 @@ void crackOn(String imageStr){
   melody generation
   */ 
   int[] topHues = topVals(hueHist, 7);
-  System.out.println(Arrays.toString(topHues));
+  //System.out.println(Arrays.toString(topHues));
   int avg = (int)average(topHues);
   
   chordCtr = 13 - (int)map(hmiBright,0,100,0,13);
@@ -279,11 +319,11 @@ void crackOn(String imageStr){
 }//crackOn
 
 void draw(){
-  if (imgThere){
+  if(imgThere){
     if (millis() > chordTrigger) {
       if(chord == topChords.length){chord=0;}
       chord = (int)random(0,topChords.length);
-      usedChords[topChords[chord]].play(1.0,0.7);
+      usedChords[topChords[chord]].play(1.0,0.75);
       chordTrigger = (int) (millis() + 2000);
     }//if
     if(millis() > noteTrigger){
@@ -413,7 +453,6 @@ void drawHist(int[] hist, PImage img, int choice){
 Uses binary thresholding to determine which side of the circle of 5ths chords will come from 
 */
 boolean tonality(PImage img, int thresh){
-  //loadPixels();
   color white = color(0,0,100);
   color black = color(0,0,0);
   float r,g,b,gray;
@@ -439,8 +478,6 @@ boolean tonality(PImage img, int thresh){
       }//if
     }//for 
   }//for 
-  println("Black: " + bl);
-  println("White: " + w);
   return w > bl; 
 }//tonality 
 

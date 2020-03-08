@@ -70,8 +70,8 @@ void setup(){
   //size(2160, 1080);
   fullScreen();
   cp5 = new ControlP5(this);
-  String prompt = "Click the buttons on the left to view different histograms\n"+
-    "Click the buttons on the right to load more images or exit";  
+  String prompt = "Click left buttons to view different histograms of ORIGINAL image\n"+
+    "Click right buttons to load MORE images or EXIT";  
   textFont(pfont);
   textSize(24);
   textAlign(CENTER);
@@ -138,8 +138,6 @@ void setup(){
     imgThere = true;
   } else {System.exit(0);}//if 
   imageStr = fc.getSelectedFile().getAbsolutePath();
-  //imageStr = cp5.get(Textfield.class,"Type the name of an image file here").getText();
-  //imgThere = true;
   crackOn(imageStr);
 }//setup 
 
