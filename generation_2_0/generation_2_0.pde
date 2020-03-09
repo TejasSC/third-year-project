@@ -16,31 +16,28 @@ import java.io.File;
 /*
 All the variables I need
 */
-ControlP5 cp5; Textarea desc, satDesc;
+ControlP5 cp5; 
+Textarea desc, satDesc, topHist, zeroHist, midHist, yAxis, topY, maxYhist, zeroFreq;
+ControlFont font, fontS, fontD, numFont; PFont pfont;
 String imageStr;
 String audio = "audio/";
 PImage img, displayImg, hueImg, satImg, brightImg, newSat;
-PGraphics pg;
 AudioContext ac;
-//int[] hist, topVals, localMaxima;
 SoundFile[] sharpChords;
-SoundFile[] flatChords; 
+SoundFile[] flatChords;
 SoundFile[] usedChords;
 SoundFile[] melodyPhrases;
 SoundFile drums;
-Env env; 
-// Set the note trigger
 int[] topChords, rhythms, topVals, pitches, hueHist, satHist, brightHist, newSatHist = null;
 int chordTrigger = 0, noteTrigger = 0, note = 0, chord = 0;
 int chordCtr, pitch;
-float[] freqs, amps;
 float drumTime = 16000/3;
 float drumsRate, drumBPM, firstDrumBPM;
 boolean sharps, hueToggle, satToggle, brightToggle, imgThere;
 Random rand = new Random();
 
 /*
-Setup time 
+Setup time
 */
 void setup(){
   imageMode(CORNER);
@@ -54,25 +51,29 @@ void setup(){
   sharpChords = new SoundFile[14];
   flatChords = new SoundFile[14];
   usedChords = new SoundFile[14];
-  
-  PFont pfont = createFont("Helvetica",24,true);
-  ControlFont fontS = new ControlFont(pfont,14);
-  ControlFont font = new ControlFont(pfont,17);
-  ControlFont fontD = new ControlFont(pfont,21);
-  
+
   /*
-  prepare circle of 5ths of chords 
+  Fonts for the UI
+  */
+  pfont = createFont("Helvetica",24,true);
+  numFont = new ControlFont(pfont, 19);
+  fontS = new ControlFont(pfont,16);
+  font = new ControlFont(pfont,18);
+  fontD = new ControlFont(pfont,21);
+
+  /*
+  prepare circle of 5ths of chords
   */
   for(int i = 0; i < usedChords.length; i++){
     sharpChords[i] = new SoundFile(this, audio+"sharp Chord " + i + ".wav");
     flatChords[i] = new SoundFile(this, audio+"flat Chord " + i + ".wav");
-  }//for 
-  
+  }//for
+
   fullScreen();
   cp5 = new ControlP5(this);
   String prompt = "Click left buttons to view different histograms of ORIGINAL image\n"+
-    "Click right buttons to load MORE images or EXIT";  
-  String satExtra = "Adjust knob and press button below to see real time graphical and musical effects";
+    "Click right buttons to load MORE images or EXIT";
+  String satExtra = "Adjust knob then press button below to see real time graphical and musical effects";
   textFont(pfont);
   textSize(24);
   textAlign(CENTER);
@@ -123,8 +124,8 @@ void setup(){
     .setColorBackground(color(0, 100, 100))
     .setTriggerEvent(Bang.RELEASE);
   satDesc = cp5.addTextarea("satDesc")
-    .setPosition(width - 200, 140)
-    .setSize(100,160)
+    .setPosition(width - 200, 120)
+    .setSize(100,180)
     .setFont(fontS)
     .setColor(color(360))
     .setColorBackground(color(30))
@@ -146,7 +147,7 @@ void setup(){
     .setColorBackground(color(66, 100, 100))
     .setTriggerEvent(Bang.RELEASE);
   desc = cp5.addTextarea("popUp")
-    .setPosition(100, height - 100)
+    .setPosition(100, height - 75)
     .setSize((width - 200), 75)
     .setFont(fontD)
     .setColor(color(360))
@@ -161,80 +162,110 @@ void setup(){
   if(fc.showOpenDialog(open) == JFileChooser.APPROVE_OPTION){
     imgThere = true;
     imageStr = fc.getSelectedFile().getAbsolutePath();
-    crackOn(imageStr);
-  } else {System.exit(0);}//if 
-}//setup 
-
-void hues(){
-  hueToggle = !hueToggle;
-}//hues
-
-void saturations(){
-  satToggle = !satToggle;
-}//saturations
-
-void brightnesses(){
-  brightToggle = !brightToggle;
-}//brightness
-
+    resume(imageStr);
+  } else {System.exit(0);}//if
+}//setup
 
 public void controlEvent(ControlEvent theEvent){
-  String content = "";
+  String content = ""; String thv = ""; String mhv = ""; String y = "";
   if(theEvent.getController().getName().equals("hues")){
-    content = "Hue refers to the colours represented in the image.\n" + 
+    content = "Hue refers to the colours represented in the image.\n" +
       "Visualised as a rainbow spectrum,"+
-      " colours through red, orange, yellow, green, blue and purple are"+ 
-      " tracked as the hue value increases from 0 to 360.\nThe hue" +
+      " colours through red, orange, yellow, green, blue and purple are"+
+      " tracked as the hue value increases from 0 to 360.\nThe average hue" +
       " determines the instrument that plays as a melody over the drums"+
-      " and chords. Scroll down to see more info on colour to instrument mappings:\n"+
-      " Red to yellow: guitar\nYellow-green to very green: piano\n"+
-      "Green-blue to purple-blue: sine wave\nPurple-blue to purple-pink: synth chords\n"+
+      " and chords. SCROLL DOWN to see more info on colour to instrument mappings:\n"+
+      "Red to yellow: guitar\nYellow-green to very green: piano\n"+
+      "Green-blue to purple-blue: sine wave\nPurple-blue to purple-pink: broken synth chords\n"+
       "purple-pink to red: trumpet";
     desc.setText(content);
-    drawHist(hueHist, hueImg, 0); 
+    y = "How many pixels in the image with that hue value";
+    yAxis.setText(y);
+    mhv = "Hue value";
+    thv = "360 (red again)";
+    midHist.setText(mhv);
+    topHist.setText(thv);
+    zeroHist.setText("0 (red)");
+    zeroFreq.setText("0");
+    maxYhist.setText(Integer.toString(max(hueHist)));
+    drawHist(hueHist, hueImg, 0);
   }//if
   if(theEvent.getController().getName().equals("saturations")){
     content = "Saturation refers to the intensity of a certain colour," +
       " distributed across a spectrum of wavelengths" +
-      " e.g. highly saturated images will be very colourful but lowly" + 
+      " e.g. highly saturated images will be very colourful but lowly" +
       " saturated images will have colour values closer to white, gray" +
       " or black.\n" + "The more saturated an image is, the faster the" +
       " speed of the drums.";
     desc.setText(content);
-    drawHist(satHist, satImg, 1); 
-  }//if 
+    y = "How many pixels in the image with that saturation value";
+    mhv = "Saturation value";
+    thv = "100 (highest)";
+    yAxis.setText(y);
+    midHist.setText(mhv);
+    topHist.setText(thv);
+    zeroHist.setText("0 (lowest)");
+    zeroFreq.setText("0");
+    maxYhist.setText(Integer.toString(max(satHist)));
+    drawHist(satHist, satImg, 1);
+  }//if
   if(theEvent.getController().getName().equals("brightnesses")){
     content = "Brightness refers to the general amount of light emitted" +
     " from an image. In this system, it is combined with other image processing" +
     " techniques and music theory ideas to generate the chord progression.";
     desc.setText(content);
-    drawHist(brightHist, brightImg, 2); 
+    y = "How many pixels in the image with that brightness value";
+    mhv = "Brightness value";
+    thv = "100 (brightest)";
+    yAxis.setText(y);
+    midHist.setText(mhv);
+    topHist.setText(thv);
+    zeroHist.setText("0 (darkest)");
+    zeroFreq.setText("0");
+    maxYhist.setText(Integer.toString(max(brightHist)));
+    drawHist(brightHist, brightImg, 2);
   }//if
-  
-  //Adjust the drum speed and also the saturation 
+
+  //Adjust the drum speed and also the saturation
   if(theEvent.getController().getId() == 5){
     drumsRate = map(theEvent.getController().getValue(), 45, 90, 0.5, 1);
     drums.stop();
     drums.loop(drumsRate);
     drumBPM = theEvent.getController().getValue();
   }//if
-  
-  //Actually display the image with edited saturation 
+
+  //Actually display the image with edited saturation
   if(theEvent.getController().getId() == 6){
     newSat = loadImage(imageStr);
     for(int x = 0; x < newSat.width - 1; x++){
-      for(int y = 0; y < newSat.height; y++){
-        int loc = y*newSat.width + x;
+      for(int y_ = 0; y_ < newSat.height; y_++){
+        int loc = y_*newSat.width + x;
         float h = hue(img.pixels[loc]);
         float b = brightness(img.pixels[loc]);
         float s = map(drumBPM, 45, 90, 0, 100);
         newSat.pixels[loc] = color(h, s, b);
-      }//for 
-    }//for 
+      }//for
+    }//for
+    content = "Saturation refers to the intensity of a certain colour," +
+      " distributed across a spectrum of wavelengths" +
+      " e.g. highly saturated images will be very colourful but lowly" +
+      " saturated images will have colour values closer to white, gray" +
+      " or black.\n" + "The more saturated an image is, the faster the" +
+      " speed of the drums.";
+    desc.setText(content);
+    y = "How many pixels in the image with that saturation value";
+    mhv = "Saturation value";
+    thv = "100 (highest)";
+    yAxis.setText(y);
+    midHist.setText(mhv);
+    topHist.setText(thv);
+    zeroFreq.setText("0");
+    zeroHist.setText("0 (lowest)");
     newSatHist = makeHist(newSat, 1);
-    drawHist(newSatHist, newSat, 1); 
+    maxYhist.setText(Integer.toString(max(newSatHist)));
+    drawHist(newSatHist, newSat, 1);
   }//if
-  
+
   if(theEvent.getController().getId() == 3){
     newSatHist = null;
     drums.play(1.0,0.0);
@@ -246,66 +277,102 @@ public void controlEvent(ControlEvent theEvent){
   }//if
 }//controlEvent
 
-void remove(PImage img){
-  if(img!=null){
-    fill(color(0));
-    rect(100,100,img.width, img.height);
-  }//if 
-}//remove 
-
-void crackOn(String imageStr){
-  System.out.println("crackOn method entered");
-  //image display   
+void resume(String imageStr){
+  System.out.println("resume method entered");
+  //image display
   img = loadImage(imageStr);
-  //copies of image for histogram generation 
+  //copies of image for histogram generation
   hueImg = loadImage(imageStr);
   satImg = loadImage(imageStr);
   brightImg = loadImage(imageStr);
   
   image(img,100,100,img.width, img.height);
+  
+  yAxis = cp5.addTextarea("yAxis")
+   .setPosition(0, 100+img.height/2)
+   .setSize(100,180)
+   .setFont(new ControlFont(pfont,16))
+   .setColor(color(360))
+   .setColorBackground(color(0));
+  
+  maxYhist = cp5.addTextarea("maxYhist")
+   .setPosition(10, 100)
+   .setSize(90,180)
+   .setFont(numFont)
+   .setColor(color(360))
+   .setColorBackground(color(0));
+  
+  zeroFreq = cp5.addTextarea("zeroFreq")
+   .setPosition(40, 75+img.height)
+   .setSize(60,180)
+   .setFont(numFont)
+   .setColor(color(360))
+   .setColorBackground(color(0));
+  
+  zeroHist = cp5.addTextarea("zeroHist")
+   .setPosition(90, 105+img.height)
+   .setSize(300, 40)
+   .setFont(numFont)
+   .setColor(color(360))
+   .setColorBackground(color(0));
+  
+  midHist = cp5.addTextarea("midHist")
+   .setPosition(90+img.width/2, 105+img.height)
+   .setSize(200, 40)
+   .setFont(numFont)
+   .setColor(color(360))
+   .setColorBackground(color(0));
+  
+  topHist = cp5.addTextarea("topHist")
+   .setPosition(87+img.width, 105+img.height)
+   .setSize(300, 40)
+   .setFont(numFont)
+   .setColor(color(360))
+   .setColorBackground(color(0));
+  
   /*
-  histograms generation 
+  histograms generation
   */
   hueHist = makeHist(hueImg,0);//H
   satHist = makeHist(satImg,1);//S
   brightHist = makeHist(brightImg,2);//B
-  
+
   /*
-  drum generation
+  drum generations
   */
   int hmiSat = maxIndex(satHist);
   drumsRate = map(hmiSat, 0, 100, 0.5, 1.0);
   firstDrumBPM = map(hmiSat, 0, 100, 45, 90);
   drums = new SoundFile(this, audio+"medium drum pattern.wav");
   drums.loop(drumsRate);
-  
+
   /*
   Chord generation
-  */ 
+  */
   int hmiBright = maxIndex(brightHist);
   PImage imgsharps = loadImage(imageStr);
-  //performs binary thresholding to decide whether sharps or flats 
+  //performs binary thresholding to decide whether sharps or flats
   sharps = tonality(imgsharps, 50);
   if(sharps){
     for(int i = 0; i < sharpChords.length; i++){
       usedChords[i] = sharpChords[i];
-    }//for 
+    }//for
   } else {
     for(int i = 0; i < flatChords.length; i++){
       usedChords[i] = flatChords[i];
-    }//for 
+    }//for
   }//if
   /*
   melody generation
-  */ 
+  */
   int[] topHues = topVals(hueHist, 7);
   //System.out.println(Arrays.toString(topHues));
   int avg = (int)average(topHues);
-  
+
   chordCtr = 13 - (int)map(hmiBright,0,100,0,13);
   //chordCtr = (int)map(avg, 0, 360, 0, 13);
   if(chordCtr % 13 == 0){
-    //if key chord is c major or Eb minor, just repeat that with its relative majors and minors 
+    //if key chord is c major or Eb minor, just repeat that with its relative majors and minors
     topChords = new int[2];
     if(chordCtr == 0){topChords[0]=0;topChords[1]=1;}
     else{topChords[0]=12;topChords[1]=13;}
@@ -314,9 +381,9 @@ void crackOn(String imageStr){
     topChords[0] = chordCtr - 1;
     topChords[1] = chordCtr;
     topChords[2] = chordCtr + 1;
-  }//if 
+  }//if
   melodyPhrases = getNotes(sharps, topChords, avg);
-}//crackOn
+}//resume
 
 void draw(){
   if(imgThere){
@@ -329,12 +396,12 @@ void draw(){
     if(millis() > noteTrigger){
       melodyPhrases[0].play(1.0, 0.9);
       noteTrigger = (int) (millis() + 2000);
-    }//if 
-  }//imgThere 
-}//draw 
+    }//if
+  }//imgThere
+}//draw
 
 /*
-Function to get melody instrument based off of most common hue in picture 
+Function to get melody instrument based off of most common hue in picture
 */
 SoundFile[] getNotes(boolean sharps, int[] topChords, int avg){
   SoundFile[] phrases = new SoundFile[1];
@@ -370,28 +437,28 @@ int[] topVals(int[] arr, int num){
 }//topVals
 
 /*
-Finds the index of maximum element in array 
+Finds the index of maximum element in array
 */
 int maxIndex(int[] arr){
   int max = 0; int maxInd = 0;
   for(int i = 0; i < arr.length; i++){
     if(arr[i] > max){max = arr[i]; maxInd = i;}
-  }//for 
+  }//for
   return maxInd;
 }//maxIndex
 
 /*
-Constructs histogram for hue, saturation or brightness 
+Constructs histogram for hue, saturation or brightness
 */
 int[] makeHist(PImage img, int choice){
   int[] hist;
   if(choice == 0){
-    hist = new int[360];//hue 
+    hist = new int[360];//hue
   } else {
-    hist = new int[101];//saturation, brightness 
+    hist = new int[101];//saturation, brightness
   }//if
-  
-  
+
+
   // Calculate the histogram
   for (int x = 0; x < img.width - 1; x++) {
     for (int y = 0; y < img.height-20; y++) {
@@ -399,23 +466,23 @@ int[] makeHist(PImage img, int choice){
       if(choice == 2){
         //Brighness is the amount of light, ranging between 0 and 100
         int bright = int(brightness(img.pixels[loc]));
-        hist[bright]++; 
+        hist[bright]++;
       } else if (choice == 1){
         int sat = int(saturation(img.pixels[loc]));
         hist[sat]++;
       } else {
         int hue = int(hue(img.pixels[loc]));
         hist[hue]++;
-      }//if 
-    }//for 
-  }//for 
+      }//if
+    }//for
+  }//for
   return hist;
-}//makeHist 
+}//makeHist
 
 void drawHist(int[] hist, PImage img, int choice){
   imageMode(CORNER);
   image(img, 100,100,img.width, img.height);
-  
+
   int offset = 100;
   // Find the largest value in the histogram
   int histMax = max(hist);
@@ -434,23 +501,23 @@ void drawHist(int[] hist, PImage img, int choice){
       c = (int) map(i, 0, img.width, 0, 100);
       c = (int) map(c, 0, 100, 0, 360);
       stroke(c);//B
-    }//if 
+    }//if
     // Map i (from 0..img.img.width) to a location in the histogram (0..255)
     if(choice == 0){
-      scale = 359;//hue 
+      scale = 359;//hue
     } else {
-      scale = 101;//saturation, brightness 
+      scale = 101;//saturation, brightness
     }//if
     int which = int(map(i, 0, img.width, 0, scale));
-    // Convert the histogram value to a location between 
+    // Convert the histogram value to a location between
     // the bottom and the top of the picture
     int y = int(map(hist[which], 0, histMax, img.height, 0));
     line(offset+i, offset+img.height, offset+i, offset+y);
-  }//for 
+  }//for
 }//drawHist
 
 /*
-Uses binary thresholding to determine which side of the circle of 5ths chords will come from 
+Uses binary thresholding to determine which side of the circle of 5ths chords will come from
 */
 boolean tonality(PImage img, int thresh){
   color white = color(0,0,100);
@@ -465,8 +532,8 @@ boolean tonality(PImage img, int thresh){
       gray = getGray(r,g,b,1);
       color c = gray < thresh ? black : white;
       img.pixels[loc] = c;
-    }//for 
-  }//for 
+    }//for
+  }//for
   int w = 0, bl = 0;
   for(int x = 0; x < img.width - 1; x++){
     for(int y = 0; y < img.height-20; y++){
@@ -476,13 +543,13 @@ boolean tonality(PImage img, int thresh){
       } else {
         bl++;
       }//if
-    }//for 
-  }//for 
-  return w > bl; 
-}//tonality 
+    }//for
+  }//for
+  return w > bl;
+}//tonality
 
 /*
-Many ways to covert an image to grayscale 
+Many ways to covert an image to grayscale
 */
 void convert2Gray(PImage img, int way){
   if (way >= 4){
@@ -497,15 +564,15 @@ void convert2Gray(PImage img, int way){
         g = green(img.pixels[loc]);
         gray = getGray(r,g,b,way);
         img.pixels[loc] = color(int(gray));
-      }//for 
+      }//for
     }//for
-  }//if 
-}//convert2Gray 
+  }//if
+}//convert2Gray
 
 /*
-Luminanace: physically, the luminous intensity per unit area of light 
+Luminanace: physically, the luminous intensity per unit area of light
 - measures light "intensity"
-Relative luminance = how "intense" a light appears to a human 
+Relative luminance = how "intense" a light appears to a human
 Luma = relative luminance calculation, based on a gamma-compressed video signal
 */
 float getGray(float r, float g, float b, int way){
@@ -516,19 +583,18 @@ float getGray(float r, float g, float b, int way){
     //linear luminance, as used by standard colour TV and video systems e.g. PAL, NTSC
     return 0.299*r + 0.587*g + 0.114*b;
   } else if (way == 2){
-    //ITU-R BT.709 standard used for HDTV systems 
+    //ITU-R BT.709 standard used for HDTV systems
     return 0.2126*r + 0.7152*g + 0.0722*b;
   } else if (way == 3){
     //ITU-R BT.2100 standard for HDR television
-    return 0.2627*r + 0.678*g + 0.0593*b; 
+    return 0.2627*r + 0.678*g + 0.0593*b;
   } else {
     return 0.0;
-  }//if 
-}//getGray 
-
+  }//if
+}//getGray
 
 /*
-Calculates average value of a numerical array 
+Calculates average value of a numerical array
 */
 float average(int[] arr){
   float avg = 0.0; float sum = 0.0;

@@ -1,11 +1,56 @@
 HOW TO PLAN THE DEMO
 
-Method:
+Beginning:
+- Project title
+- Explain project
+-- Analysing a static image's visual properties, converting those to
+musical attributes
+- Cover tools used to build it
+-- Why Processing? Why Java?
+(Software sketchbook and language
+Coding in a visual arts context
+
+
+Open source
+Many contributors build tools and libraries
+Allows development of:
+Computer vision
+Networking
+Electronics programming
+Music composition
+And more...)
+
+
+Demo:
 - load an image into the system
 - Explain the histogram stuff first on the left
 -- Hues
 -- Saturations
 -- Brightnesses
-- Start changing the HSB values and stuff to demonstrate the musical
-effect changes too
-- THEN, load another image and show that whole process again
+- Modify HSB Values, show changes
+- Repeat with different image
+
+- Coding chromesthesia: mapping hues/colours to instrument sounds in melody
+
+TECH:
+- Go through top down structure design
+
+Evaluation feedback:
+- Pros: functionality, idea, music makes sense
+- Cons: UI (improved on it, ongoing process)
+
+3 things I planned to work on at the beginning of this semester:
+1) Improve the UI with Control P5, allowing file selection of an image via .jpg
+or .png file extensions.
+2) Expand on genres able to chosen for this project, e.g. have Western classical
+music and rock, as well as the current genre of lo-fi chillhop.
+3) For the current genre of lo-fi chillhop, work on making results sound more
+musically coherent, as in more metronomical according to the tempo of the drum
+beat obtained.
+-- got 1 and 3 done, 2 can wait for future iterations of project
+-- don't stop developing this bc it is fuccin SiCk
+
+Future aspirations:
+- make it a web app so that ppl don't have to be in person to test it
+- Multiple genres of music
+- possibly include object detection APIs to map objects to sounds...?
