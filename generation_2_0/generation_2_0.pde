@@ -288,42 +288,42 @@ void resume(String imageStr){
   
   image(img,100,100,img.width, img.height);
   
-  yAxis = cp5.addTextarea("yAxis")
+  cp5.addTextarea("yAxis")
    .setPosition(0, 100+img.height/2)
    .setSize(100,180)
    .setFont(new ControlFont(pfont,16))
    .setColor(color(360))
    .setColorBackground(color(0));
   
-  maxYhist = cp5.addTextarea("maxYhist")
+  cp5.addTextarea("maxYhist")
    .setPosition(10, 100)
    .setSize(90,180)
    .setFont(numFont)
    .setColor(color(360))
    .setColorBackground(color(0));
-  
-  zeroFreq = cp5.addTextarea("zeroFreq")
+   
+  cp5.addTextarea("zeroFreq")
    .setPosition(40, 75+img.height)
    .setSize(60,180)
    .setFont(numFont)
    .setColor(color(360))
    .setColorBackground(color(0));
   
-  zeroHist = cp5.addTextarea("zeroHist")
+  cp5.addTextarea("zeroHist")
    .setPosition(90, 105+img.height)
    .setSize(300, 40)
    .setFont(numFont)
    .setColor(color(360))
    .setColorBackground(color(0));
   
-  midHist = cp5.addTextarea("midHist")
+  cp5.addTextarea("midHist")
    .setPosition(90+img.width/2, 105+img.height)
    .setSize(200, 40)
    .setFont(numFont)
    .setColor(color(360))
    .setColorBackground(color(0));
   
-  topHist = cp5.addTextarea("topHist")
+  cp5.addTextarea("topHist")
    .setPosition(87+img.width, 105+img.height)
    .setSize(300, 40)
    .setFont(numFont)
@@ -481,7 +481,7 @@ int[] makeHist(PImage img, int choice){
 
 void drawHist(int[] hist, PImage img, int choice){
   imageMode(CORNER);
-  image(img, 100,100,img.width, img.height);
+  
 
   int offset = 100;
   // Find the largest value in the histogram
@@ -514,6 +514,7 @@ void drawHist(int[] hist, PImage img, int choice){
     int y = int(map(hist[which], 0, histMax, img.height, 0));
     line(offset+i, offset+img.height, offset+i, offset+y);
   }//for
+  image(img, 100,100,img.width, img.height);
 }//drawHist
 
 /*

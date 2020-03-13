@@ -16,13 +16,31 @@ import java.io.File;
 /*
 All the variables I need
 */
-ControlP5 cp5; Textarea desc;
+ControlP5 cp5; 
+Textarea desc, satDesc, topHist, zeroHist, midHist, yAxis, topY, maxYhist, zeroFreq;
 String imageStr;
 String audio = "audio/";
-PImage img, displayImg, hueImg, satImg, brightImg;
+PImage img, displayImg, hueImg, satImg, brightImg, newSat;
 PGraphics pg;
 AudioContext ac;
-//int[] hist, topVals, localMaxima;
+String hueContent = "Hue refers to the colours represented in the image.\n" + 
+      "Visualised as a rainbow spectrum,"+
+      " colours through red, orange, yellow, green, blue and purple are"+ 
+      " tracked as the hue value increases from 0 to 360.\nThe hue" +
+      " determines the instrument that plays as a melody over the drums"+
+      " and chords. Scroll down to see more info on colour to instrument mappings:\n"+
+      "Red to yellow: guitar\nYellow-green to very green: piano\n"+
+      "Green-blue to purple-blue: sine wave\nPurple-blue to purple-pink: synth chords\n"+
+      "purple-pink to red: trumpet";
+String satContent = "Saturation refers to the intensity of a certain colour," +
+      " distributed across a spectrum of wavelengths" +
+      " e.g. highly saturated images will be very colourful but lowly" + 
+      " saturated images will have colour values closer to white, gray" +
+      " or black.\n" + "The more saturated an image is, the faster the" +
+      " speed of the drums.";
+String briContent = "Brightness refers to the general amount of light emitted" +
+    " from an image. In this system, it is combined with other image processing" +
+    " techniques and music theory ideas to generate the chord progression.";
 SoundFile[] sharpChords;
 SoundFile[] flatChords; 
 SoundFile[] usedChords;
@@ -30,12 +48,12 @@ SoundFile[] melodyPhrases;
 SoundFile drums;
 Env env; 
 // Set the note trigger
-int[] topChords, rhythms, topVals, pitches, hueHist, satHist, brightHist;
+int[] topChords, rhythms, topVals, pitches, hueHist, satHist, brightHist, newSatHist = null;
 int chordTrigger = 0, noteTrigger = 0, note = 0, chord = 0;
 int chordCtr, pitch;
 float[] freqs, amps;
 float drumTime = 16000/3;
-float drumsRate;
+float drumsRate, drumBPM, firstDrumBPM;
 boolean sharps, hueToggle, satToggle, brightToggle, imgThere;
 Random rand = new Random();
 
@@ -56,6 +74,7 @@ void setup(){
   usedChords = new SoundFile[14];
   
   PFont pfont = createFont("Helvetica",24,true);
+  ControlFont fontS = new ControlFont(pfont, 16);
   ControlFont font = new ControlFont(pfont,17);
   ControlFont fontD = new ControlFont(pfont,21);
   
@@ -70,6 +89,7 @@ void setup(){
   //size(2160, 1080);
   fullScreen();
   cp5 = new ControlP5(this);
+  String satExtra = "Adjust knob then press button below to see real time graphical and musical effects";
   String prompt = "Click left buttons to view different histograms of ORIGINAL image\n"+
     "Click right buttons to load MORE images or EXIT";  
   textFont(pfont);
@@ -112,8 +132,31 @@ void setup(){
     .setColorActive(color(150, 100, 100))
     .setColorBackground(color(150, 100, 100))
     .setTriggerEvent(Bang.RELEASE);
-  cp5.addBang("EXIT")
+  satDesc = cp5.addTextarea("satDesc")
+    .setPosition(width - 200, 120)
+    .setSize(100,180)
+    .setFont(fontS)
+    .setColor(color(360))
+    .setColorBackground(color(30))
+    .setText(satExtra);
+  cp5.addKnob("Drums speed \n(beats per minute)")
     .setId(4)
+    .setPosition(width - 200, 340)
+    .setSize(100,100)
+    .setValue(firstDrumBPM)
+    .setFont(fontS)
+    .setRange(45,90);
+  cp5.addBang("Reveal Saturation\nHistogram for new\nDrum speed")
+    .setId(5)
+    .setPosition(width - 220, 500)
+    .setSize(100,50)
+    .setFont(font)
+    .setColorValue(color(66, 100, 100))
+    .setColorActive(color(66, 100, 100))
+    .setColorBackground(color(66, 100, 100))
+    .setTriggerEvent(Bang.RELEASE);
+  cp5.addBang("EXIT")
+    .setId(6)
     .setPosition(width - 200, 20)
     .setSize(100,50)
     .setFont(font)
@@ -127,6 +170,10 @@ void setup(){
     .setFont(fontD)
     .setColor(color(360))
     .setColorBackground(color(30));
+  selectImage();
+}//setup
+
+void selectImage(){
   JButton open = new JButton();
   JFileChooser fc = new JFileChooser();
   String rootDir = "C:/Users/tscte/Desktop/Uni/2019-20/Third Year Project/generation/data";
@@ -139,60 +186,41 @@ void setup(){
   } else {System.exit(0);}//if 
   imageStr = fc.getSelectedFile().getAbsolutePath();
   crackOn(imageStr);
-}//setup 
+}//selectImage
 
-void hues(){
-  hueToggle = !hueToggle;
-}//hues
-
-void saturations(){
-  satToggle = !satToggle;
-}//saturations
-
-void brightnesses(){
-  brightToggle = !brightToggle;
-}//brightness
-
+void clearImage(){
+  fill(0);
+  noStroke();
+  rect(100,100,img.width+10, img.height+10);
+}//clearImage
 
 public void controlEvent(ControlEvent theEvent){
-  String content = "";
-  if(theEvent.getController().getName().equals("hues")){
-    content = "Hue refers to the colours represented in the image.\n" + 
-      "Visualised as a rainbow spectrum,"+
-      " colours through red, orange, yellow, green, blue and purple are"+ 
-      " tracked as the hue value increases from 0 to 360.\nThe hue" +
-      " determines the instrument that plays as a melody over the drums"+
-      " and chords. Scroll down to see more info on colour to instrument mappings:\n"+
-      "Red to yellow: guitar\nYellow-green to very green: piano\n"+
-      "Green-blue to purple-blue: sine wave\nPurple-blue to purple-pink: synth chords\n"+
-      "purple-pink to red: trumpet";
-    desc.setText(content);
-    drawHist(hueHist, hueImg, 0); 
-  }//if
-  if(theEvent.getController().getName().equals("saturations")){
-    content = "Saturation refers to the intensity of a certain colour," +
-      " distributed across a spectrum of wavelengths" +
-      " e.g. highly saturated images will be very colourful but lowly" + 
-      " saturated images will have colour values closer to white, gray" +
-      " or black.\n" + "The more saturated an image is, the faster the" +
-      " speed of the drums.";
-    desc.setText(content);
-    drawHist(satHist, satImg, 1); 
-  }//if 
-  if(theEvent.getController().getName().equals("brightnesses")){
-    content = "Brightness refers to the general amount of light emitted" +
-    " from an image. In this system, it is combined with other image processing" +
-    " techniques and music theory ideas to generate the chord progression.";
-    desc.setText(content);
-    drawHist(brightHist, brightImg, 2); 
-  }//if 
-  if(theEvent.getController().getId() == 3){
-    drums.stop();
-    setup();
-  }//if
-  if(theEvent.getController().getId() == 4){
-    System.exit(0);
-  }//if
+  switch(theEvent.getController().getId()){
+    case 0: desc.setText(hueContent); drawHist(hueHist, hueImg, 0); break;
+    case 1: desc.setText(satContent); drawHist(satHist, satImg, 1); break;
+    case 2: desc.setText(briContent); drawHist(brightHist, brightImg, 2); break;
+    case 3: drums.stop(); clearImage(); selectImage(); break;
+    case 4: drumsRate = map(theEvent.getController().getValue(), 45, 90, 0.5, 1);
+      drums.stop();
+      drums.loop(drumsRate);
+      drumBPM = theEvent.getController().getValue();
+      break;
+    case 5: newSat = loadImage(imageStr);
+      for(int x = 0; x < newSat.width - 1; x++){
+        for(int y_ = 0; y_ < newSat.height; y_++){
+          int loc = y_*newSat.width + x;
+          float h = hue(img.pixels[loc]);
+          float b = brightness(img.pixels[loc]);
+          float s = map(drumBPM, 45, 90, 0, 100);
+          newSat.pixels[loc] = color(h, s, b);
+        }//for
+      }//for
+      newSatHist = makeHist(newSat, 1);
+      drawHist(newSatHist, newSat, 1);
+      desc.setText(satContent);
+      break;
+    default: System.exit(0);
+  }//switch 
 }//controlEvent
 
 void crackOn(String imageStr){
@@ -373,8 +401,7 @@ void drawHist(int[] hist, PImage img, int choice){
       c = (int) map(i, 0, img.width, 0, 100);
       stroke(360, c, 100);//S
     } else {
-      c = (int) map(i, 0, img.width, 0, 100);
-      c = (int) map(c, 0, 100, 0, 360);
+      c = (int) map(i, 0, img.width, 0, 360);
       stroke(c);//B
     }//if 
     // Map i (from 0..img.img.width) to a location in the histogram (0..255)

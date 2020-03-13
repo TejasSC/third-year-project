@@ -9,8 +9,6 @@ musical attributes
 -- Why Processing? Why Java?
 (Software sketchbook and language
 Coding in a visual arts context
-
-
 Open source
 Many contributors build tools and libraries
 Allows development of:
@@ -21,14 +19,14 @@ Music composition
 And more...)
 
 
-Demo:
+Demo for the following images: you, the good place, purple flowers, short kings
 - load an image into the system
 - Explain the histogram stuff first on the left
 -- Hues
 -- Saturations
 -- Brightnesses
 - Modify HSB Values, show changes
-- Repeat with different image
+
 
 - Coding chromesthesia: mapping hues/colours to instrument sounds in melody
 
