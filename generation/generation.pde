@@ -56,7 +56,8 @@ float drumTime = 16000/3;
 float drumsRate, drumBPM, firstDrumBPM;
 boolean sharps, hueToggle, satToggle, brightToggle, imgThere;
 Random rand = new Random();
-
+PFont pfont;
+ControlFont numFont;
 /*
 Setup time 
 */
@@ -73,10 +74,11 @@ void setup(){
   flatChords = new SoundFile[14];
   usedChords = new SoundFile[14];
   
-  PFont pfont = createFont("Helvetica",24,true);
+  pfont = createFont("Helvetica",24,true);
   ControlFont fontS = new ControlFont(pfont, 16);
   ControlFont font = new ControlFont(pfont,17);
   ControlFont fontD = new ControlFont(pfont,21);
+  numFont = new ControlFont(pfont, 19);
   
   /*
   prepare circle of 5ths of chords 
@@ -188,18 +190,31 @@ void selectImage(){
   crackOn(imageStr);
 }//selectImage
 
-void clearImage(){
-  fill(0);
-  noStroke();
-  rect(100,100,img.width+10, img.height+10);
-}//clearImage
+void histAxes(int choice, int[] hist){
+  yAxis.setText("Frequency of pixels containing value");
+  zeroFreq.setText("0");
+  maxYhist.setText(Integer.toString(max(hist)));
+  if(choice == 0){
+    zeroHist.setText("0 (red)");
+    topHist.setText("360 (back to red)");
+    midHist.setText("Hue value");
+  } else if (choice == 1){
+    zeroHist.setText("0 (lowest)");
+    topHist.setText("100 (highest)");
+    midHist.setText("Saturation value");
+  } else {
+    zeroHist.setText("0 (darkest)");
+    topHist.setText("100 (brightest)");
+    midHist.setText("Brightness value");
+  }//if 
+}//histAxes
 
 public void controlEvent(ControlEvent theEvent){
   switch(theEvent.getController().getId()){
-    case 0: desc.setText(hueContent); drawHist(hueHist, hueImg, 0); break;
-    case 1: desc.setText(satContent); drawHist(satHist, satImg, 1); break;
-    case 2: desc.setText(briContent); drawHist(brightHist, brightImg, 2); break;
-    case 3: drums.stop(); clearImage(); selectImage(); break;
+    case 0: desc.setText(hueContent); histAxes(0, hueHist); drawHist(hueHist, hueImg, 0); break;
+    case 1: desc.setText(satContent); histAxes(1, satHist); drawHist(satHist, satImg, 1); break;
+    case 2: desc.setText(briContent); histAxes(2, brightHist); drawHist(brightHist, brightImg, 2); break;
+    case 3: drums.stop(); clearGraphics(); selectImage(); break;
     case 4: drumsRate = map(theEvent.getController().getValue(), 45, 90, 0.5, 1);
       drums.stop();
       drums.loop(drumsRate);
@@ -216,12 +231,30 @@ public void controlEvent(ControlEvent theEvent){
         }//for
       }//for
       newSatHist = makeHist(newSat, 1);
+      histAxes(1, newSatHist);
       drawHist(newSatHist, newSat, 1);
       desc.setText(satContent);
       break;
     default: System.exit(0);
   }//switch 
 }//controlEvent
+
+void clearGraphics(){
+  fill(0);
+  noStroke();
+  rect(100,100,img.width, img.height);
+  //clear y axis on hist 
+  rect(10,100,90,180); 
+  rect(0,100+img.height/2,100,180); 
+  rect(40,75+img.height,60,180);
+  //clear x axis on hist 
+  rect(90, 105+img.height, 300, 40);
+  rect(90+img.width/2, 105+img.height, 200, 40);
+  rect(87+img.width, 105+img.height, 300, 40);
+  //clear whatever lines are left over from most recent histogram
+  rect(100, 100+img.height, img.width, 1);
+  rect(100+img.width, 80+img.height,1,30);
+}//clearGraphics
 
 void crackOn(String imageStr){
   //image display   
@@ -230,6 +263,49 @@ void crackOn(String imageStr){
   satImg = loadImage(imageStr);
   brightImg = loadImage(imageStr);
   image(img,100,100,img.width, img.height);
+  
+  maxYhist = cp5.addTextarea("maxYhist")
+   .setPosition(10, 100)
+   .setSize(90,180)
+   .setFont(numFont)
+   .setColor(color(360))
+   .setColorBackground(color(0));
+  
+  yAxis = cp5.addTextarea("yAxis")
+   .setPosition(0, 100+img.height/2)
+   .setSize(100,180)
+   .setFont(new ControlFont(pfont,16))
+   .setColor(color(360))
+   .setColorBackground(color(0));
+  
+  zeroFreq = cp5.addTextarea("zeroFreq")
+   .setPosition(40, 75+img.height)
+   .setSize(60,180)
+   .setFont(numFont)
+   .setColor(color(360))
+   .setColorBackground(color(0));
+  
+  zeroHist = cp5.addTextarea("zeroHist")
+   .setPosition(90, 105+img.height)
+   .setSize(300, 40)
+   .setFont(numFont)
+   .setColor(color(360))
+   .setColorBackground(color(0));
+  
+  midHist = cp5.addTextarea("midHist")
+   .setPosition(90+img.width/2, 105+img.height)
+   .setSize(200, 40)
+   .setFont(numFont)
+   .setColor(color(360))
+   .setColorBackground(color(0));
+  
+  topHist = cp5.addTextarea("topHist")
+   .setPosition(87+img.width, 105+img.height)
+   .setSize(300, 40)
+   .setFont(numFont)
+   .setColor(color(360))
+   .setColorBackground(color(0));
+  
   
   /*
   histograms generation 
@@ -394,7 +470,7 @@ void drawHist(int[] hist, PImage img, int choice){
   for (int i = 0; i < img.width; i ++) {
     int c;
     if(choice == 0){
-      c = (int) map(i, 0, img.width, 0, 360);
+      c = (int) map(i, 0, img.width, 0, 359);
       stroke(c,100,100);//H
       rect(offset+i, offset+img.height - 20, 1, 20);
     } else if (choice == 1) {
