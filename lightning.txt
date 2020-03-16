@@ -1,9 +1,0 @@
-Notes for lightning talk
-
-What is my project about?
-
-Why is this an interesting thing to do?
-
-How am I going to solve the problem?
-
-What will you see in my demo in the spring?
