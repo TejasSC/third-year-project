@@ -331,7 +331,7 @@ void crackOn(String imageStr){
   int hmiBright = maxIndex(brightHist);
   PImage imgsharps = loadImage(imageStr);
   //performs binary thresholding to decide whether sharps or flats 
-  sharps = tonality(imgsharps, 50);
+  sharps = whichSide(imgsharps, 180);
   if(sharps){
     for(int i = 0; i < sharpChords.length; i++){
       usedChords[i] = sharpChords[i];
@@ -387,8 +387,8 @@ SoundFile[] getNotes(boolean sharps, int[] topChords, int avg){
   int ctr;
   if(topChords.length == 2){ctr = topChords[0];}else{ctr = topChords[2];}
   int pair = ctr/2;
-  String melodies = "melodies/"; String tonality = ""; String instrument = "";
-  if(sharps){tonality += "sharp Chord/";}else{tonality += "flat Chord/";}
+  String melodies = "melodies/"; String whichSide = ""; String instrument = "";
+  if(sharps){whichSide += "sharp Chord/";}else{whichSide += "flat Chord/";}
   switch(avg/72){
     case 0: instrument += "guitar"; break;
     case 1: instrument += "piano"; break;
@@ -396,7 +396,7 @@ SoundFile[] getNotes(boolean sharps, int[] topChords, int avg){
     case 3: instrument += "synth"; break;
     default:instrument += "trumpet"; break;
   }//switch
-  String path = audio+melodies + tonality + pair + "/" + instrument + "/0.wav";
+  String path = audio+melodies + whichSide + pair + "/" + instrument + "/0.wav";
   phrases[0] = new SoundFile(this, path);
   return phrases;
 }//getNote
@@ -497,37 +497,29 @@ void drawHist(int[] hist, PImage img, int choice){
 /*
 Uses binary thresholding to determine which side of the circle of 5ths chords will come from 
 */
-boolean tonality(PImage img, int thresh){
+boolean whichSide(PImage img, int thresh){
   //loadPixels();
-  color white = color(0,0,100);
-  color black = color(0,0,0);
+  color c;
+  color white = color(360);
+  color black = color(0);
   float r,g,b,gray;
+  int w = 0, bl = 0;
   for(int x = 0; x < img.width - 1; x++){
-    for(int y = 0; y < img.height-20; y++){
+    for(int y = 0; y < img.height; y++){
       int loc = y*img.width + x;
       r = red(img.pixels[loc]);
       b = blue(img.pixels[loc]);
       g = green(img.pixels[loc]);
       gray = getGray(r,g,b,1);
-      color c = gray < thresh ? black : white;
+      if(gray < thresh){c = black; bl++;} 
+      else {c = white; w++;}
       img.pixels[loc] = c;
-    }//for 
-  }//for 
-  int w = 0, bl = 0;
-  for(int x = 0; x < img.width - 1; x++){
-    for(int y = 0; y < img.height-20; y++){
-      int loc = y*img.width + x;
-      if(img.pixels[loc] == white){
-        w++;
-      } else {
-        bl++;
-      }//if
     }//for 
   }//for 
   println("Black: " + bl);
   println("White: " + w);
   return w > bl; 
-}//tonality 
+}//whichSide 
 
 /*
 Many ways to covert an image to grayscale 
