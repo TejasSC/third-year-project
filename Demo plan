@@ -1,6 +1,6 @@
 HOW TO PLAN THE DEMO
 
-Beginning:
+Beginning (0:00 to 1:30):
 - Project title
 - Explain project
 -- Analysing a static image's visual properties, converting those to
@@ -18,35 +18,30 @@ Electronics programming
 Music composition
 And more...)
 
-
-Demo for the following images: you, me at open mic, purple flowers, short kings
+DEMO (1:30 to 9:30)
+Demo for the following images: technopark, you, the good place, purple flowers
 - load an image into the system
+Image 1:
 - Explain the histogram stuff first on the left
 -- Hues
 -- Saturations
 -- Brightnesses
+Image 2:
 - Modify HSB Values, show changes
-
+Image 3:
+- Talk about chromesthesia
+Image 4:
+- ControlP5
 
 - Coding chromesthesia: mapping hues/colours to instrument sounds in melody
 
-TECH:
-- Go through top down structure design
+TECH (9:30 to 17:00):
+- Follow power point
 
+CLOSING (17:00 to end)
 Evaluation feedback:
 - Pros: functionality, idea, music makes sense
 - Cons: UI (improved on it, ongoing process)
-
-3 things I planned to work on at the beginning of this semester:
-1) Improve the UI with Control P5, allowing file selection of an image via .jpg
-or .png file extensions.
-2) Expand on genres able to chosen for this project, e.g. have Western classical
-music and rock, as well as the current genre of lo-fi chillhop.
-3) For the current genre of lo-fi chillhop, work on making results sound more
-musically coherent, as in more metronomical according to the tempo of the drum
-beat obtained.
--- got 1 and 3 done, 2 can wait for future iterations of project
--- don't stop developing this bc it is fuccin SiCk
 
 Future aspirations:
 - make it a web app so that ppl don't have to be in person to test it
