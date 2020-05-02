@@ -321,7 +321,8 @@ void crackOn(String imageStr){
   drum generation
   */
   int hmiSat = maxIndex(satHist);
-  drumsRate = map(hmiSat, 0, 100, 0.75, 1.0);
+  print("hmiSat = " + hmiSat);
+  drumsRate = map(hmiSat, 0, 100, 0.5, 1.0);
   drums = new SoundFile(this, audio+"medium drum pattern.wav");
   drums.loop(drumsRate);
   
@@ -329,9 +330,10 @@ void crackOn(String imageStr){
   Chord generation
   */ 
   int hmiBright = maxIndex(brightHist);
+  System.out.println("hmiBright = " + hmiBright); 
   PImage imgsharps = loadImage(imageStr);
   //performs binary thresholding to decide whether sharps or flats 
-  sharps = whichSide(imgsharps, 180);
+  sharps = whichSide(imgsharps, 50);
   if(sharps){
     for(int i = 0; i < sharpChords.length; i++){
       usedChords[i] = sharpChords[i];
@@ -350,6 +352,7 @@ void crackOn(String imageStr){
   
   chordCtr = 13 - (int)map(hmiBright,0,100,0,13);
   //chordCtr = (int)map(avg, 0, 360, 0, 13);
+  System.out.println("tc = " + chordCtr);
   if(chordCtr % 13 == 0){
     //if key chord is c major or Eb minor, just repeat that with its relative majors and minors 
     topChords = new int[2];
@@ -502,17 +505,16 @@ boolean whichSide(PImage img, int thresh){
   color c;
   color white = color(360);
   color black = color(0);
-  float r,g,b,gray;
+  //float r,g,b,gray;
   int w = 0, bl = 0;
   for(int x = 0; x < img.width - 1; x++){
     for(int y = 0; y < img.height; y++){
       int loc = y*img.width + x;
-      r = red(img.pixels[loc]);
-      b = blue(img.pixels[loc]);
-      g = green(img.pixels[loc]);
-      gray = getGray(r,g,b,1);
-      if(gray < thresh){c = black; bl++;} 
-      else {c = white; w++;}
+      float bri = brightness(img.pixels[loc]);
+      //System.out.println("Red = " + r + ", green = " + g + ", blue = " + b);
+      //gray = getGray(r,g,b,1);
+      //System.out.println("gray = " + gray);
+      if(bri < thresh){c = black; bl++;} else {c = white; w++;}
       img.pixels[loc] = c;
     }//for 
   }//for 
